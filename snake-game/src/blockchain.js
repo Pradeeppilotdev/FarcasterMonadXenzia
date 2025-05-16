@@ -238,14 +238,25 @@ async function updateLeaderboard() {
         }
         console.log('topScores:', topScores);
         if (topScores && topScores.length > 0) {
-            // Populate leaderboard table
-            topScores.forEach((score, index) => {
-                if (score.score.toString() === '0') return; // Skip zero scores
+            // Filter to only highest score per unique address
+            const uniqueScores = {};
+            topScores.forEach((entry) => {
+                const addr = entry.player.toLowerCase();
+                const score = Number(entry.score);
+                if (!uniqueScores[addr] || score > uniqueScores[addr].score) {
+                    uniqueScores[addr] = { ...entry, score };
+                }
+            });
+            // Convert to array and sort by score descending
+            const uniqueSorted = Object.values(uniqueScores).sort((a, b) => b.score - a.score).slice(0, 100);
+
+            uniqueSorted.forEach((score, index) => {
+                if (score.score === 0) return;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td>${score.player.slice(0, 6)}...${score.player.slice(-4)}</td>
-                    <td>${score.score.toString()}</td>
+                    <td>${score.score}</td>
                 `;
                 leaderboardBody.appendChild(row);
             });

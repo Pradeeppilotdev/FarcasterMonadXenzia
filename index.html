@@ -7,7 +7,7 @@
     <link rel="icon"  href="snake-game\assets\molandak.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Add Farcaster meta tags -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://f1d9-2401-4900-9404-a277-787d-22eb-847a-b655.ngrok-free.app/MONAD-ONCHAIN-GAME/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://f1d9-2401-4900-9404-a277-787d-22eb-847a-b655.ngrok-free.app/MONAD-ONCHAIN-GAME/","splashImageUrl":"https://f1d9-2401-4900-9404-a277-787d-22eb-847a-b655.ngrok-free.app/MONAD-ONCHAIN-GAME/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://87ef-36-255-17-7.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://87ef-36-255-17-7.ngrok-free.app/","splashImageUrl":"https://87ef-36-255-17-7.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
     <style>
         :root {
             --primary-color: #6c63ff;
@@ -17,8 +17,8 @@
             --text-color: #ffffff;
             --panel-bg: rgba(16, 16, 42, 0.8);
             --neon-glow: 0 0 10px #6c63ff, 0 0 20px #6c63ff, 0 0 30px #4a90e2;
-            --game-width: 800px;
-            --game-height: 600px;
+            --game-width: 320px;
+            --game-height: 240px;
             --aspect-ratio: 4/3;
         }
         
@@ -71,8 +71,8 @@
         }
         
         .container {
-            width: 100vw;
-            min-height: 100vh;
+            /* width: 100vw;
+            min-height: 100vh; */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -82,14 +82,32 @@
         }
         
         #game {
-            width: 100vw;
-            max-width: 800px;
-            aspect-ratio: 4/3;
-            height: auto;
-            background: var(--background-color);
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(232, 232, 234, 0.629);
-        }
+    width: 345px !important;
+    height: 295px !important;
+    min-width: 345px !important;
+    min-height: 295px !important;
+    max-width: 345px !important;
+    max-height: 295px !important;
+    margin: 0 auto;
+    display: block;
+    background: var(--background-color);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(232, 232, 234, 0.629);
+    overflow: hidden;
+    position: relative;
+}
+#game canvas {
+    width: 345px !important;
+    height: 295px !important;
+    min-width: 345px !important;
+    min-height: 295px !important;
+    max-width: 345px !important;
+    max-height: 295px !important;
+    display: block;
+    margin: 0 auto;
+    position: absolute;
+    left: 0; top: 0;
+}
         
         .ui-container {
             width: 100%;
@@ -348,8 +366,8 @@
         /* Optimize for Farcaster's aspect ratio */
         @media (max-aspect-ratio: 4/3) {
             :root {
-                --game-width: 100vw;
-                --game-height: calc(100vw * 3/4);
+                --game-width: 320px;
+                --game-height: 240px;
             }
             
             .container {
@@ -358,16 +376,18 @@
             
             .ui-container {
                 padding: 5px;
+                max-width: 320px;
             }
             
             .control-btn {
-                height: 50px;
-                font-size: 20px;
+                height: 40px;
+                font-size: 16px;
+                max-width: 60px;
             }
             
             #spaceBtn {
-                max-width: 120px;
-                font-size: 16px;
+                max-width: 100px;
+                font-size: 14px;
             }
         }
         
@@ -659,7 +679,7 @@
         window.addEventListener('load', checkMobileAndMode);
 
         // Check on resize (in case user rotates device)
-        window.addEventListener('resize', checkMobileAndMode);
+        // window.addEventListener('resize', checkMobileAndMode);
 
         // Update the touch event handling
         document.querySelectorAll('.control-btn').forEach(button => {

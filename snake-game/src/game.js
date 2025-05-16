@@ -11,7 +11,7 @@ let walletConnected = false;
 let sdk;
 
 // Grid settings
-const GRID_SIZE = 20;
+const GRID_SIZE = 10;
 let moveTime = 0;
 const MOVE_DELAY = 100;
 let moveInterpolation = 1;
@@ -23,13 +23,14 @@ let eatSound = null;
 let chogSound = null;
 
 // Add these constants at the top with other global variables
-const BASE_SCALE = 0.25;
-const MIN_SCALE = 0.08;
-const SCALE_THRESHOLD = 500; // Points at which scaling starts
-const SCALE_FACTOR = 0.03; // How much to reduce scale per threshold
-const BASE_MOVE_DELAY = 100;    // Starting speed (higher = slower)
-const MIN_MOVE_DELAY = 40;      // Maximum speed (lower = faster)
-const SPEED_THRESHOLD = 200;    // Points at which speed increases
+const BASE_SCALE = 0.15;
+const MIN_SCALE = 0.05;
+const SCALE_THRESHOLD = 500;
+const SCALE_FACTOR = 0.02;
+const BASE_MOVE_DELAY = 100;
+const MIN_MOVE_DELAY = 40;
+const SPEED_THRESHOLD = 200;
+const SPEED_INCREASE = 10;
 
 // Add a global for selected character
 let selectedCharacter = null;
@@ -84,6 +85,28 @@ async function initializeFarcaster() {
         }
     } catch (error) {
         console.error('Error initializing Farcaster:', error);
+    }
+}
+
+// Add Farcaster Mini App contract initialization on game load
+async function initializeFarcasterAndContract() {
+    if (window.farcasterSDK && await window.farcasterSDK.isInMiniApp()) {
+        await window.farcasterSDK.actions.ready();
+        if (window.farcasterSDK.wallet.ethProvider) {
+            window.ethereum = window.farcasterSDK.wallet.ethProvider;
+            // Initialize contract immediately
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const signer = provider.getSigner();
+            window.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+            // Update UI
+            const account = await signer.getAddress();
+            if (document.getElementById('walletInfo')) {
+                document.getElementById('walletInfo').textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
+            }
+            // Set walletConnected flags
+            walletConnected = true;
+            window.walletConnected = true;
+        }
     }
 }
 
@@ -155,11 +178,15 @@ function create() {
         // Add character sprites
         charKeys.forEach((char, i) => {
             const sprite = this.add.sprite(centerX + (i - 1.5) * spacing, centerY, char.key);
-            sprite.setScale(Math.max(0.18, Math.min(0.28, this.scale.width / 1200)));
+            sprite.setScale(Math.max(0.12, Math.min(0.18, this.scale.width / 1200)));
             const radius = (sprite.width * sprite.scaleX) / 2;
             sprite.setInteractive(new Phaser.Geom.Circle(sprite.width / 2, sprite.height / 2, radius), Phaser.Geom.Circle.Contains);
-            this.add.text(sprite.x, sprite.y + 0.18 * this.scale.height, char.label, {
-                fontSize: Math.max(16, Math.floor(this.scale.width / 32)) + 'px', fill: '#64ffda', fontFamily: 'Arial, sans-serif', fontWeight: 'bold', align: 'center'
+            this.add.text(sprite.x, sprite.y + 0.15 * this.scale.height, char.label, {
+                fontSize: Math.max(14, Math.floor(this.scale.width / 40)) + 'px',
+                fill: '#64ffda',
+                fontFamily: 'Arial, sans-serif',
+                fontWeight: 'bold',
+                align: 'center'
             }).setOrigin(0.5);
             sprite.on('pointerdown', () => {
                 selectedCharacter = char.key;
@@ -244,17 +271,17 @@ function startGame() {
     console.log('Starting game with wallet connected');
     
     // Initialize game elements
-    snake = this.add.sprite(400, 300, selectedCharacter || 'molandak');
-    snake.setScale(0.25);
+    snake = this.add.sprite(200, 150, selectedCharacter || 'molandak');
+    snake.setScale(BASE_SCALE);
     snakeSegments = [snake];
 
     // Initialize food
-    moyaki = this.add.sprite(200, 200, 'moyaki');
-    moyaki.setScale(0.25);
+    moyaki = this.add.sprite(100, 100, 'moyaki');
+    moyaki.setScale(BASE_SCALE);
 
-    // Add score text
-    scoreText = this.add.text(16, 16, 'Score: 0', { 
-        fontSize: '32px', 
+    // Add score text with smaller font
+    scoreText = this.add.text(8, 8, 'Score: 0', { 
+        fontSize: '20px',
         fill: '#fff' 
     });
 
@@ -425,7 +452,7 @@ function update(time) {
         }
 
         // Check wall collision using target position
-        if (snake.targetX < 0 || snake.targetX > 800 || snake.targetY < 0 || snake.targetY > 600) {
+        if (snake.targetX < 0 || snake.targetX >= 345 || snake.targetY < 0 || snake.targetY >= 295) {
             endGame(scene);
             return;
         }
@@ -459,7 +486,7 @@ function update(time) {
             snakeSegments.push(newSegment);
 
             // Move food to new grid position
-            moyaki.x = Phaser.Math.Between(2, 38) * GRID_SIZE;
+            moyaki.x = Phaser.Math.Between(2, 31) * GRID_SIZE;
             moyaki.y = Phaser.Math.Between(2, 28) * GRID_SIZE;
 
             // Update score and handle special food
@@ -542,22 +569,11 @@ function update(time) {
 
 // All your other functions (togglePause, endGame, restartGame, etc.)...
 
-// Helper to get container size
-function getGameContainerSize() {
-    const container = document.getElementById('game');
-    if (!container) return { width: 360, height: 480 };
-    const rect = container.getBoundingClientRect();
-    // Fallback to minimum size if not rendered yet
-    return {
-        width: Math.max(320, Math.floor(rect.width)),
-        height: Math.max(400, Math.floor(rect.height))
-    };
-}
-
-// Phaser config (responsive)
+// Set Phaser config to fixed 320x295
 let config = {
     type: Phaser.AUTO,
-    ...getGameContainerSize(),
+    width: 345,
+    height: 295,
     backgroundColor: '#2d2d2d',
     parent: 'game',
     scene: {
@@ -567,25 +583,12 @@ let config = {
     }
 };
 
-// Initialize Phaser after DOM loads, and on resize
-function launchPhaserGame() {
+// Initialize Phaser after DOM loads (no resize handler needed)
+document.addEventListener('DOMContentLoaded', function() {
     if (window.game && typeof window.game.destroy === 'function') {
         window.game.destroy(true);
     }
-    config = {
-        ...config,
-        ...getGameContainerSize()
-    };
     window.game = new Phaser.Game(config);
-}
-
-document.addEventListener('DOMContentLoaded', launchPhaserGame);
-window.addEventListener('resize', () => {
-    // Resize Phaser game to fit container
-    if (window.game && window.game.scale && typeof window.game.scale.resize === 'function') {
-        const { width, height } = getGameContainerSize();
-        window.game.scale.resize(width, height);
-    }
 });
 
 // Update the endGame function
@@ -602,7 +605,7 @@ function endGame(scene) {
         gameOverText.destroy();
     }
     gameOverText = scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'Game Over!\nClick to submit score', {
-        fontSize: Math.max(18, Math.floor(scene.scale.width / 20)) + 'px',
+        fontSize: Math.max(16, Math.floor(scene.scale.width / 25)) + 'px',
         fill: '#fff',
         align: 'center'
     }).setOrigin(0.5);

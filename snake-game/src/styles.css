@@ -12,9 +12,32 @@ body {
     padding: 20px;
 }
 
-#game { 
-    border: 1px solid #fff;
-    margin: 20px 0;
+#game {
+    width: 320px !important;
+    height: 295px !important;
+    min-width: 320px !important;
+    min-height: 295px !important;
+    max-width: 320px !important;
+    max-height: 295px !important;
+    margin: 0 auto;
+    display: block;
+    background: var(--background-color);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(232, 232, 234, 0.629);
+    overflow: hidden;
+    position: relative;
+}
+#game canvas {
+    width: 320px !important;
+    height: 295px !important;
+    min-width: 320px !important;
+    min-height: 295px !important;
+    max-width: 320px !important;
+    max-height: 295px !important;
+    display: block;
+    margin: 0 auto;
+    position: absolute;
+    left: 0; top: 0;
 }
 
 #wallet-section {
