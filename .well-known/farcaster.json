@@ -1,0 +1,23 @@
+{
+  "accountAssociation": {
+    "header": "REPLACE_WITH_YOUR_HEADER",
+    "payload": "REPLACE_WITH_YOUR_PAYLOAD",
+    "signature": "REPLACE_WITH_YOUR_SIGNATURE"
+  },
+  "frame": {
+    "version": "1",
+    "name": "MONAD Xenzia",
+    "iconUrl": "https://monadxenzia.vercel.app/snake-game/assets/molandak3.png",
+    "splashImageUrl": "https://monadxenzia.vercel.app/snake-game/assets/moyaki.png",
+    "splashBackgroundColor": "#0a0a2a",
+    "homeUrl": "https://monadxenzia.vercel.app",
+    "buttonTitle": "🐍 Play Now",
+    "description": "A retro snake game on-chain via Monad — submit your score, challenge friends!",
+    "tagline": "Retro snake with blockchain scores",
+    "ogTitle": "MONAD Xenzia",
+    "ogDescription": "Score points by eating the moyaki and record it on the Monad testnet.",
+    "ogImageUrl": "https://monadxenzia.vercel.app/snake-game/assets/moyaki.png",
+    "primaryCategory": "games",
+    "tags": ["snake", "game", "onchain", "monad", "farcaster"]
+  }
+}
