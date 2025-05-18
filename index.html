@@ -7,7 +7,7 @@
     <link rel="icon"  href="snake-game\assets\molandak.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Add Farcaster meta tags -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://b1ee-36-255-17-7.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://b1ee-36-255-17-7.ngrok-free.app/","splashImageUrl":"https://b1ee-36-255-17-7.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://monadxenzia.vercel.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Monad Xenzia","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://monadxenzia.vercel.app/","splashImageUrl":"https://monadxenzia.vercel.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
     <style>
         :root {
             --primary-color: #6c63ff;
@@ -489,7 +489,8 @@
         
         <!-- Add high score display -->
         <div id="highScore">MONAD XENZIA</div>
-        
+        <!-- <button id="shareButton">📢 Share on Farcaster</button> -->
+
         <div id="game"></div>
         
         <!-- Add on-screen controls -->
@@ -547,7 +548,27 @@
         import { sdk } from 'https://esm.sh/@farcaster/frame-sdk'
         window.farcasterSDK = sdk;
     </script>
-    
+    <script>
+        document.getElementById('shareButton').addEventListener('click', async () => {
+  try {
+    await window.farcasterSDK.actions.shareCast({
+      text: "Just played 🐍 MONAD Xenzia — try to beat my high score!",
+      embeds: [
+        {
+          url: "https://monadxenzia.vercel.app/",
+          image: {
+            url: "https://monadxenzia.vercel.app/snake-game/assets/molandak3.png"
+          }
+        }
+      ]
+    });
+  } catch (err) {
+    console.error("Error sharing cast:", err);
+    alert("Unable to share cast.");
+  }
+});
+
+    </script>
     <!-- Then load your game files -->
     <script src="snake-game/src/background.js"></script>
     <script src="snake-game/src/blockchain.js"></script>
