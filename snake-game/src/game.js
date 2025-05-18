@@ -525,9 +525,19 @@ async function endGame(scene) {
     if (window.walletConnected && window.contract) {
         try {
             console.log('Submitting score:', score);
-            const tx = await window.contract.submitScore(score);
-            console.log('Waiting confirmation...');
-            await tx.wait();
+            const data = window.contract.interface.encodeFunctionData('submitScore', [score]);
+    const txHash = await window.ethereum.request({
+        method: 'eth_sendTransaction',
+        params: [{
+            from: await window.contract.signer.getAddress(),
+            to: window.contract.address,
+            data: data,
+            value: '0x0',
+            gas: '0x30d40' // 200,000 in hex
+        }]
+    });
+    console.log('Transaction sent:', txHash);
+
             // Show success message briefly before restart
             gameOverText.setText('Score submitted!\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
             // Try to update leaderboard, but always restart game after
