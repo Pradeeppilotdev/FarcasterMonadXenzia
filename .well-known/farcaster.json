@@ -1,4 +1,9 @@
 {
+    "accountAssociation": {
+      "header": "eyJmaWQiOjc4NzgzNywidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweDdFQjQ5ZjBjQjNiYWQwRDYyN0FCNjZFMEFCNmQyYzJFQTA5NThBMTQifQ",
+      "payload": "eyJkb21haW4iOiJtb25hZHhlbnppYS52ZXJjZWwuYXBwIn0",
+      "signature": "MHg2MmI1ZWRlN2Y1ZDk1ZTJjMDgwMzY5YTU0MGU2YmEyN2ZjZjFlMDVlYzYyZWQ1MWE5ZjFkN2ZkZGRkNDAxZmU0MDdiMzYyODg1YTRlZWIzOTljNTAyOTY1MWIzY2E3NWU0ZDQ3NTg2N2YyZjA5NGEwNDVjMTliNmJjMGM4NTcyYTFj"
+    },
   "frame": {
     "version": "1",
     "name": "Monad Xenzia",
