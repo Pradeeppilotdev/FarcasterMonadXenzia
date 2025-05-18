@@ -1,0 +1,22 @@
+{
+    "name": "MONAD Xenzia",
+    "short_name": "Xenzia",
+    "description": "Play Snake on Monad — fast, fun, on-chain!",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a2a",
+    "theme_color": "#0a0a2a",
+    "icons": [
+      {
+        "src": "/snake-game/assets/salmonad.png",
+        "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/snake-game/assets/vans.png",
+        "sizes": "512x512",
+        "type": "image/png"
+      }
+    ]
+  }
+  
