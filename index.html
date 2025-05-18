@@ -7,7 +7,7 @@
     <link rel="icon"  href="snake-game\assets\molandak.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Add Farcaster meta tags -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://loyal-fit-sloth.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://loyal-fit-sloth.ngrok-free.app/","splashImageUrl":"https://loyal-fit-sloth.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://b1ee-36-255-17-7.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://b1ee-36-255-17-7.ngrok-free.app/","splashImageUrl":"https://b1ee-36-255-17-7.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
     <style>
         :root {
             --primary-color: #6c63ff;
@@ -157,8 +157,27 @@
             text-align: center;
             font-size: 24px;
             margin: 10px 0;
-            color: var(--secondary-color);
-            text-shadow: 0 0 5px rgba(108, 99, 255, 0.5);
+            background: linear-gradient(45deg, #6c63ff, #ffffff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 10px rgba(108, 99, 255, 0.7),
+                         0 0 20px rgba(108, 99, 255, 0.5),
+                         0 0 30px rgba(108, 99, 255, 0.3);
+            animation: neonGlow 2s infinite alternate;
+        }
+
+        @keyframes neonGlow {
+            from {
+                text-shadow: 0 0 10px rgba(108, 99, 255, 0.7),
+                            0 0 20px rgba(108, 99, 255, 0.5),
+                            0 0 30px rgba(108, 99, 255, 0.3);
+            }
+            to {
+                text-shadow: 0 0 15px rgba(108, 99, 255, 0.8),
+                            0 0 25px rgba(108, 99, 255, 0.6),
+                            0 0 35px rgba(108, 99, 255, 0.4);
+            }
         }
         
         .leaderboard {
@@ -469,7 +488,7 @@
         </div>
         
         <!-- Add high score display -->
-        <div id="highScore">High Score: 0</div>
+        <div id="highScore">MONAD XENZIA</div>
         
         <div id="game"></div>
         
@@ -487,8 +506,8 @@
                 <button class="control-btn" id="downBtn">↓</button>
             </div>
         </div>
-
-        <!-- Add leaderboard section -->
+<!-- 
+       
         <div class="leaderboard">
             <h3>Global Leaderboard</h3>
             <table class="leaderboard-table">
@@ -500,11 +519,11 @@
                     </tr>
                 </thead>
                 <tbody id="leaderboardBody">
-                    <!-- Leaderboard entries will be populated here -->
+                
                 </tbody>
             </table>
             <div id="userRank"></div>
-        </div>
+        </div> -->
         
         <div class="how-to-play">
             <h3>How to play</h3>
@@ -901,6 +920,8 @@
             }
         }
     </script>
+<pre id="debugOutput" style="color: #f88; font-size: 12px; white-space: pre-wrap;"></pre>
+
 </body>
 </html>
 
