@@ -44,22 +44,6 @@ let fatnadsjohnMoveDir = { x: 0, y: 0 };
 let fatnadsjohnVanishTimeout = null;
 let fatnadsjohnNextAppear = 0;
 
-// Add contract constants at the top
-const CONTRACT_ADDRESS = '0x2dE8C67B2010a141d245E3a128F9b90bFdfDDDf8';
-const CONTRACT_ABI = [
-    // Events
-    "event ScoreSubmitted(address indexed player, uint256 score)",
-    // Functions
-    "function submitScore(uint256 score) external",
-    "function getHighScore(address player) external view returns (uint256)",
-    "function getHighScoreTimestamp(address player) external view returns (uint256)",
-    "function getLatestScore(address player) external view returns (uint256)",
-    "function getTotalPlayers() external view returns (uint256)",
-    "function getTotalScores() external view returns (uint256)",
-    "function getTopScores(uint256 n) external view returns (tuple(address player, uint256 score, uint256 timestamp)[])",
-    "function getPlayerScores(address player) external view returns (tuple(address player, uint256 score, uint256 timestamp)[])"
-];
-
 async function initializeFarcaster() {
     try {
         // Check if we're in a Farcaster mini app
@@ -88,25 +72,21 @@ async function initializeFarcaster() {
     }
 }
 
-// Add Farcaster Mini App contract initialization on game load
+// Initialize Farcaster and contract
 async function initializeFarcasterAndContract() {
-    if (window.farcasterSDK && await window.farcasterSDK.isInMiniApp()) {
-        await window.farcasterSDK.actions.ready();
-        if (window.farcasterSDK.wallet.ethProvider) {
-            window.ethereum = window.farcasterSDK.wallet.ethProvider;
-            // Initialize contract immediately
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            window.contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-            // Update UI
-            const account = await signer.getAddress();
-            if (document.getElementById('walletInfo')) {
-                document.getElementById('walletInfo').textContent = `${account.slice(0, 6)}...${account.slice(-4)}`;
-            }
-            // Set walletConnected flags
-            walletConnected = true;
-            window.walletConnected = true;
+    try {
+        console.log('Initializing Farcaster and contract...');
+        const success = await window.initializeFarcaster();
+        if (success) {
+            console.log('Farcaster and contract initialized successfully');
+            return true;
+        } else {
+            console.error('Failed to initialize Farcaster and contract');
+            return false;
         }
+    } catch (error) {
+        console.error('Error initializing Farcaster and contract:', error);
+        return false;
     }
 }
 
@@ -149,14 +129,6 @@ function create() {
     if (!selectedCharacter) {
         console.log('Rendering character selection UI');
         const connectBtn = document.getElementById('connectButton');
-        if (connectBtn) {
-            connectBtn.disabled = true;
-            connectBtn.textContent = 'Disabled';
-            connectBtn.style.background = '#ffb3b3';
-            connectBtn.style.color = '#fff';
-            connectBtn.style.opacity = '0.7';
-            connectBtn.style.cursor = 'none';
-        }
         const centerX = this.scale.width / 2;
         const centerY = this.scale.height / 2;
         const spacing = Math.min(this.scale.width / 5, 140);
@@ -190,47 +162,11 @@ function create() {
             }).setOrigin(0.5);
             sprite.on('pointerdown', () => {
                 selectedCharacter = char.key;
-                if (connectBtn) {
-                    connectBtn.disabled = false;
-                    connectBtn.textContent = 'Connect Wallet';
-                    connectBtn.style.background = '';
-                    connectBtn.style.color = '';
-                    connectBtn.style.opacity = '';
-                    connectBtn.style.cursor = '';
-                    connectBtn.onclick = async () => {
-                        try {
-                            // Check if wallet is already connected
-                            if (window.walletConnected) {
-                                console.log('Wallet already connected');
-                                walletConnected = true;
-                                startGame.call(scene);
-                                return;
-                            }
-                            
-                            const connected = await setWalletConnected();
-                            if (connected) {
-                                startGame.call(scene);
-                            } else {
-                                console.error('Failed to connect wallet');
-                                if (pauseText) {
-                                    pauseText.setText('Failed to connect wallet');
-                                    pauseText.setVisible(true);
-                                }
-                            }
-                        } catch (error) {
-                            console.error('Error connecting wallet:', error);
-                            if (pauseText) {
-                                pauseText.setText('Error connecting wallet');
-                                pauseText.setVisible(true);
-                            }
-                        }
-                    };
-                }
                 selectText.destroy();
                 charSprites.forEach(s => s.destroy());
                 scene.children.list.filter(obj => obj.type === 'Text' && obj.y > centerY).forEach(obj => obj.destroy());
                 if (typeof pauseText !== 'undefined' && pauseText) pauseText.destroy();
-                pauseText = scene.add.text(this.scale.width / 2, this.scale.height / 2, 'Connect Wallet to Play', {
+                pauseText = scene.add.text(this.scale.width / 2, this.scale.height / 2, 'Press SPACE to Start', {
                     fontSize: Math.max(18, Math.floor(this.scale.width / 20)) + 'px',
                     fill: '#64ffda',
                     fontFamily: 'Arial, sans-serif',
@@ -238,6 +174,7 @@ function create() {
                     align: 'center'
                 }).setOrigin(0.5);
                 pauseText.setVisible(true);
+                startGame.call(scene);
             });
             charSprites.push(sprite);
         });
@@ -258,17 +195,7 @@ function create() {
 function startGame() {
     const centerX = this.scale.width / 2;
     
-    // Check both local and global wallet state
-    if (!walletConnected && !window.walletConnected) {
-        console.log('Wallet not connected, cannot start game');
-        if (pauseText) {
-            pauseText.setText('Connect Wallet to Play');
-            pauseText.setVisible(true);
-        }
-        return;
-    }
-
-    console.log('Starting game with wallet connected');
+    console.log('Starting game');
     
     // Initialize game elements
     snake = this.add.sprite(200, 150, selectedCharacter || 'molandak');
@@ -290,6 +217,7 @@ function startGame() {
 
     // Initialize direction
     snake.direction = { x: 1, y: 0 };
+    lastDirection = 'right';
 
     // Initialize audio
     if (!backgroundMusic) {
@@ -319,34 +247,23 @@ function startGame() {
 
     // Add space key for pause/resume
     this.input.keyboard.on('keydown-SPACE', function() {
-        if (walletConnected) {
-            togglePause(this.scene);
-            if (!isPaused && backgroundMusic && !backgroundMusic.isPlaying) {
-                backgroundMusic.play();
-            }
-        } else {
-            if (pauseText) {
-                pauseText.setText('Connect Wallet to Play');
-                pauseText.setVisible(true);
-            }
+        togglePause(this.scene);
+        if (!isPaused && backgroundMusic && !backgroundMusic.isPlaying) {
+            backgroundMusic.play();
         }
     }, this);
 
-    // Listen for wallet connection event
-    window.addEventListener('walletConnected', async () => {
-        console.log('Wallet connected event received');
-        walletConnected = true;
-        window.walletConnected = true;
-        if (pauseText) {
-            pauseText.setText('Press SPACE to Start');
-            pauseText.setVisible(true);
-        }
-    });
+    // Set initial game state
+    isPaused = true;
+    gameOver = false;
+    score = 0;
+    moveTime = 0;
+    moveInterpolation = 1;
 }
 
 function togglePause(scene) {
-    // Only allow toggling if wallet is connected and game is not over
-    if (!walletConnected || gameOver) return;
+    // Only allow toggling if game is not over
+    if (gameOver) return;
     
     isPaused = !isPaused;
     
@@ -372,8 +289,8 @@ function update(time) {
     // Store scene context
     const scene = this;
 
-    // Don't update if game is over, paused, or wallet not connected
-    if (gameOver || isPaused || !walletConnected) return;
+    // Don't update if game is over or paused
+    if (gameOver || isPaused) return;
 
     // Handle keyboard input
     if (cursors.left.isDown && lastDirection !== 'right') {
@@ -567,43 +484,33 @@ function update(time) {
     }
 }
 
-// All your other functions (togglePause, endGame, restartGame, etc.)...
-
-// Set Phaser config to fixed 320x295
-let config = {
-    type: Phaser.AUTO,
-    width: 345,
-    height: 295,
-    backgroundColor: '#2d2d2d',
-    parent: 'game',
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    }
-};
-
-// Initialize Phaser after DOM loads (no resize handler needed)
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.game && typeof window.game.destroy === 'function') {
-        window.game.destroy(true);
-    }
-    window.game = new Phaser.Game(config);
-});
-
-// Update the endGame function
-function endGame(scene) {
+// End game function
+async function endGame(scene) {
+    if (gameOver) return;
+    
     gameOver = true;
     isPaused = true;
-
-    // Stop background music if playing
-    if (backgroundMusic && backgroundMusic.isPlaying) {
-        backgroundMusic.stop();
+    
+    // Stop all game elements
+    if (snake) {
+        snake.destroy();
+        snake = null;
     }
-
-    if (gameOverText) {
-        gameOverText.destroy();
+    if (moyaki) {
+        moyaki.destroy();
+        moyaki = null;
     }
+    if (scoreText) {
+        scoreText.destroy();
+        scoreText = null;
+    }
+    
+    // Stop all sounds
+    if (eatSound) eatSound.stop();
+    if (chogSound) chogSound.stop();
+    if (backgroundMusic) backgroundMusic.stop();
+    
+    // Show game over text
     gameOverText = scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'Game Over!\nClick to submit score', {
         fontSize: Math.max(16, Math.floor(scene.scale.width / 25)) + 'px',
         fill: '#fff',
@@ -614,69 +521,47 @@ function endGame(scene) {
         pauseText.setVisible(false);
     }
 
-    // Make the page scrollable again when game ends
-    document.body.classList.remove('game-active');
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    document.body.style.overflow = 'auto';
-
-    scene.input.once('pointerdown', async () => {
-        if (!window.ethereum || !window.ethereum.selectedAddress) {
-            gameOverText.setText('Wallet not connected!\nPlease connect wallet');
-            return;
-        }
-
-        if (!window.contract) {
-            try {
-                // Try to reinitialize contract
-                const provider = new ethers.providers.Web3Provider(window.ethereum);
-                const signer = provider.getSigner();
-                window.contract = new ethers.Contract(
-                    CONTRACT_ADDRESS,
-                    CONTRACT_ABI,
-                    signer
-                );
-            } catch (error) {
-                console.error('Error reinitializing contract:', error);
-                gameOverText.setText('Contract initialization failed!\nPlease refresh page');
-                return;
-            }
-        }
-
-        if (score > 0) {
-            try {
-                gameOverText.setText('Submitting score...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-                const tx = await window.contract.submitScore(score);
-                gameOverText.setText('Waiting confirmation...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-                await tx.wait();
-                // Show success message briefly before restart
-                gameOverText.setText('Score submitted!\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-                // Try to update leaderboard, but always restart game after
-                if (typeof updateLeaderboard === 'function') {
-                    try {
-                        await updateLeaderboard();
-                    } catch (error) {
-                        console.error('Error updating leaderboard:', error);
-                        gameOverText.setText('Score submitted! (Leaderboard error)\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-                    }
+    // Submit score if wallet is connected
+    if (window.walletConnected && window.contract) {
+        try {
+            console.log('Submitting score:', score);
+            const tx = await window.contract.submitScore(score);
+            console.log('Waiting confirmation...');
+            await tx.wait();
+            // Show success message briefly before restart
+            gameOverText.setText('Score submitted!\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
+            // Try to update leaderboard, but always restart game after
+            if (typeof updateLeaderboard === 'function') {
+                try {
+                    await updateLeaderboard();
+                } catch (error) {
+                    console.error('Error updating leaderboard:', error);
+                    gameOverText.setText('Score submitted! (Leaderboard error)\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
                 }
-                setTimeout(() => {
-                    restartGame(scene);
-                }, 800);
-            } catch (error) {
-                console.error('Error submitting score:', error);
-                gameOverText.setText('Error submitting score!\nClick to try again').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-                scene.input.once('pointerdown', () => endGame(scene));
             }
-        } else {
-            restartGame(scene);
+            setTimeout(() => {
+                restartGame(scene);
+            }, 800);
+        } catch (error) {
+            console.error('Error submitting score:', error);
+            if (error.message.includes('user rejected')) {
+                gameOverText.setText('Transaction rejected!\nClick to try again').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
+            } else {
+                gameOverText.setText('Error submitting score!\nClick to try again').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
+            }
+            // Ensure input is enabled before attaching listener
+            scene.input.enabled = true;
+            scene.input.once('pointerdown', () => restartGame(scene)); // Allow clicking to restart
         }
-    });
+    } else {
+        gameOverText.setText('Wallet not connected!\nPlease connect wallet');
+        scene.input.once('pointerdown', () => endGame(scene));
+    }
 }
 
 // Update the restartGame function
 function restartGame(scene) {
+    console.log('restartGame called');
     // Reset game state
     gameOver = false;
     isPaused = true;
@@ -685,30 +570,52 @@ function restartGame(scene) {
     moveTime = 0;
     moveInterpolation = 1;
 
-    // Update score display
-    scoreText.setText('Score: 0');
+    // Update score display only if scoreText object exists
+    if (scoreText) {
+        scoreText.setText('Score: 0');
+    }
 
     // Clear snake segments
-    for (let i = 1; i < snakeSegments.length; i++) {
-        snakeSegments[i].destroy();
-    }
-    snakeSegments = [snake];
+    // Ensure snake object exists before accessing snakeSegments
+    if (snake) {
+        for (let i = 1; i < snakeSegments.length; i++) {
+            if (snakeSegments[i]) {
+                 snakeSegments[i].destroy();
+            }
+        }
+        snakeSegments = [snake];
 
-    // Reset snake position
-    const centerX = scene.scale.width / 2;
-    const centerY = scene.scale.height / 2;
-    snake.x = centerX;
-    snake.y = centerY;
-    snake.startX = centerX;
-    snake.startY = centerY;
-    snake.targetX = centerX;
-    snake.targetY = centerY;
-    snake.direction = { x: 1, y: 0 };
+        // Reset snake position
+        const centerX = scene.scale.width / 2;
+        const centerY = scene.scale.height / 2;
+        snake.x = centerX;
+        snake.y = centerY;
+        snake.startX = centerX;
+        snake.startY = centerY;
+        snake.targetX = centerX;
+        snake.targetY = centerY;
+        snake.direction = { x: 1, y: 0 };
+         // Reset snake texture to selectedCharacter
+        snake.setTexture(selectedCharacter || 'molandak');
+    } else {
+        // If snake object doesn't exist, we might need to re-create it
+        // This case should ideally not happen if endGame properly destroys
+        // and create is called on scene restart, but adding a log just in case.
+        console.warn('Snake object is null in restartGame. Scene might need full restart.');
+        // Consider a full scene restart here if this becomes an issue
+        scene.scene.restart();
+        return;
+    }
 
     // Reset food position
-    moyaki.x = centerX - 100;
-    moyaki.y = centerY - 100;
-    moyaki.setTexture('moyaki');
+    if (moyaki) {
+        moyaki.x = centerX - 100;
+        moyaki.y = centerY - 100;
+        moyaki.setTexture('moyaki');
+    } else {
+         console.warn('Moyaki object is null in restartGame.');
+    }
+
 
     // Clear game over text
     if (gameOverText) {
@@ -717,25 +624,49 @@ function restartGame(scene) {
     }
 
     // Show start message
-    pauseText.setText('Press SPACE to Start');
-    pauseText.setVisible(true);
+    // Check if wallet is connected to show the correct start message
+    // Use the global walletConnected flag from blockchain.js
+    const walletInfo = document.getElementById('walletInfo');
+    const isConnected = walletInfo && walletInfo.textContent.startsWith('Connected:');
+
+    if (pauseText) {
+        if (isConnected) {
+             pauseText.setText('Press SPACE to Start');
+        } else {
+             pauseText.setText('Connect wallet to submit score\nPress SPACE to Start');
+        }
+        pauseText.setVisible(true);
+    } else {
+        // If pauseText is null, it might mean the scene was fully reset or there's an issue
+        console.warn('pauseText object is null in restartGame.');
+        // This might require re-creating the pause text here or ensuring full scene restart.
+        // For now, just logging.
+    }
+
 
     // Stop any playing music
-    if (backgroundMusic.isPlaying) {
+    if (backgroundMusic && backgroundMusic.isPlaying) {
         backgroundMusic.stop();
     }
 
     // Make sure the game is ready for new input
-    scene.input.keyboard.enabled = true;
+    // This was already added in the previous step, ensuring it remains.
+    scene.input.enabled = true;
 
     // Reset all scales to base scale
-    snakeSegments.forEach(segment => segment.setScale(BASE_SCALE));
-    moyaki.setScale(BASE_SCALE);
+    // Ensure snakeSegments and moyaki exist before scaling
+    if (snakeSegments) {
+        snakeSegments.forEach(segment => {
+             if (segment) segment.setScale(BASE_SCALE);
+        });
+    }
+    if (moyaki) {
+        moyaki.setScale(BASE_SCALE);
+    }
 
-    // Reset snake texture to selectedCharacter
-    snake.setTexture(selectedCharacter || 'molandak');
 
     // Reset fatnadsjohn state
+    if (fatnadsjohnVanishTimeout) clearTimeout(fatnadsjohnVanishTimeout);
     if (fatnadsjohn) fatnadsjohn.destroy();
     fatnadsjohn = null;
     fatnadsjohnActive = false;
@@ -743,7 +674,22 @@ function restartGame(scene) {
     fatnadsjohnAppearTime = 0;
     fatnadsjohnMoveDir = { x: 0, y: 0 };
     fatnadsjohnVanishTimeout = null;
-    fatnadsjohnNextAppear = scene.time.now + Phaser.Math.Between(120000, 180000);
+    // Re-schedule the next appearance
+    if (scene.time) {
+        fatnadsjohnNextAppear = scene.time.now + Phaser.Math.Between(120000, 180000);
+    } else {
+        console.warn('Phaser scene time object is null in restartGame. Cannot reschedule fatnadsjohn.');
+        fatnadsjohnNextAppear = Infinity; // Prevent future appearances if time is not available
+    }
+
+
+    // Add listener for spacebar to start the game
+    // Remove existing SPACE listener first to avoid duplicates
+    scene.input.keyboard.off('keydown-SPACE');
+    scene.input.keyboard.once('keydown-SPACE', startGame, scene);
+
+    console.log('Game state reset, ready to start.');
+
 }
 
 // Make sure restartGame is available globally
@@ -757,16 +703,11 @@ async function setWalletConnected() {
             walletConnected = true;
             window.walletConnected = true;
             
-            // Initialize contract
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const signer = provider.getSigner();
-            window.contract = new ethers.Contract(
-                CONTRACT_ADDRESS,
-                CONTRACT_ABI,
-                signer
-            );
-            
-            console.log('Contract initialized successfully:', window.contract);
+            // Initialize contract using blockchain.js
+            const success = await window.initializeContract(window.ethereum);
+            if (!success) {
+                throw new Error('Failed to initialize contract');
+            }
             
             // Update pause text if it exists
             if (pauseText) {
@@ -814,4 +755,26 @@ function calculateMoveDelay(currentScore) {
     const reduction = Math.floor(currentScore / SPEED_THRESHOLD) * SPEED_INCREASE;
     return Math.max(BASE_MOVE_DELAY - reduction, MIN_MOVE_DELAY);
 }
+
+// Set Phaser config to fixed 320x295
+let config = {
+    type: Phaser.AUTO,
+    width: 345,
+    height: 295,
+    backgroundColor: '#2d2d2d',
+    parent: 'game',
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    }
+};
+
+// Initialize Phaser after DOM loads (no resize handler needed)
+document.addEventListener('DOMContentLoaded', function() {
+    if (window.game && typeof window.game.destroy === 'function') {
+        window.game.destroy(true);
+    }
+    window.game = new Phaser.Game(config);
+});
 

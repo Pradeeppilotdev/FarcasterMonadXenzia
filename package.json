@@ -1,5 +1,8 @@
 {
   "dependencies": {
-    "@vercel/analytics": "^1.5.0"
+    "@farcaster/frame-wagmi-connector": "^0.0.34",
+    "@vercel/analytics": "^1.5.0",
+    "viem": "^2.29.4",
+    "wagmi": "^2.15.3"
   }
 }

@@ -1,10 +1,8 @@
-﻿// Replace with your deployed contract address
-const contractAddress = "0x2dE8C67B2010a141d245E3a128F9b90bFdfDDDf8";
-
-const contractABI = [
+﻿// Contract configuration
+const CONTRACT_ADDRESS = '0x2dE8C67B2010a141d245E3a128F9b90bFdfDDDf8'; // Replace with your contract address
+const CONTRACT_ABI = [
     // Events
     "event ScoreSubmitted(address indexed player, uint256 score)",
-    
     // Functions
     "function submitScore(uint256 score) external",
     "function getHighScore(address player) external view returns (uint256)",
@@ -17,7 +15,7 @@ const contractABI = [
 ];
 
 // Monad Testnet network parameters
-const monadTestnet = {
+const MONAD_TESTNET = {
     chainId: '0x279F', // 10143 in hex
     chainName: 'Monad Testnet',
     nativeCurrency: {
@@ -29,50 +27,155 @@ const monadTestnet = {
     blockExplorerUrls: ['https://testnet.monadexplorer.com/']
 };
 
-let provider, signer, contract, account;
+// Global state
+let provider;
+let signer;
+let contract;
+let account;
 let isConnected = false;
 
-async function connectWallet() {
+// Handle account changes
+async function handleAccountsChanged(accounts) {
+    if (accounts.length === 0) {
+        // User disconnected their wallet
+        await disconnectWallet();
+    } else {
+        // User switched accounts
+        account = accounts[0];
+        await initializeContract(window.ethereum);
+    }
+}
+
+// Handle chain changes
+async function handleChainChanged(chainId) {
+    const decimal = parseInt(chainId, 16);
+    if (decimal !== 10143) { // Check against decimal chain ID
+        await disconnectWallet();
+        alert('Please connect to Monad Testnet to play the game.');
+    } else {
+        await initializeContract(window.ethereum);
+    }
+}
+
+// Update connection status in UI
+function updateConnectionStatus() {
+    const walletInfo = document.getElementById('walletInfo');
+    if (walletInfo) {
+        if (isConnected && account) {
+            walletInfo.textContent = `Connected: ${account.slice(0, 6)}...${account.slice(-4)}`;
+        } else {
+            walletInfo.textContent = 'Not Connected';
+        }
+    }
+}
+
+// Initialize contract with error handling
+async function initializeContract(ethereumProvider) {
     try {
-        if (typeof window.ethereum !== 'undefined') {
-            // Check if we're on the correct network first
-            const provider = new ethers.providers.Web3Provider(window.ethereum);
-            const network = await provider.getNetwork();
-            
-            // Check if we're on Monad Testnet (chainId: 10143)
-            if (network.chainId !== 10143) {
-                console.log('Wrong network, attempting to switch to Monad Testnet...');
-                const switched = await switchToMonadTestnet();
-                if (!switched) {
+        console.log('Initializing contract...');
+        
+        // Check if provider exists
+        if (!ethereumProvider) {
+            console.error('No Ethereum provider found');
+            return false;
+        }
+
+        // Initialize provider and signer
+        provider = new ethers.providers.Web3Provider(ethereumProvider);
+        signer = provider.getSigner();
+        
+        // Get current network
+        const network = await provider.getNetwork();
+        console.log('Current network:', network);
+        
+        // Check if we're on the correct network
+        if (network.chainId !== 10143) {
+            console.log('Switching to Monad Testnet...');
+            try {
+                await ethereumProvider.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: MONAD_TESTNET.chainId }],
+                });
+            } catch (switchError) {
+                // This error code indicates that the chain has not been added to MetaMask
+                if (switchError.code === 4902) {
+                    try {
+                        await ethereumProvider.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [MONAD_TESTNET],
+                        });
+                    } catch (addError) {
+                        console.error('Error adding Monad Testnet:', addError);
+                        return false;
+                    }
+                } else {
+                    console.error('Error switching to Monad Testnet:', switchError);
                     return false;
                 }
             }
+        }
 
-            // Now proceed with connection
-            await provider.send("eth_requestAccounts", []);
-            signer = provider.getSigner();
+        // Initialize contract
+        contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+        
+        // Try to get the current account
+        try {
             account = await signer.getAddress();
+            isConnected = true;
+            console.log('Connected account:', account);
+        } catch (error) {
+            console.log('No account connected yet');
+            isConnected = false;
+        }
+
+        // Set up event listeners
+        ethereumProvider.on('accountsChanged', handleAccountsChanged);
+        ethereumProvider.on('chainChanged', handleChainChanged);
+
+        // Update UI
+        updateConnectionStatus();
+        
+        // Set global variables
+        window.contract = contract;
+        window.walletConnected = isConnected;
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing contract:', error);
+        return false;
+    }
+}
+
+// Initialize Farcaster and contract
+async function initializeFarcaster() {
+    try {
+        console.log('Initializing Farcaster...');
+        const isMiniApp = await window.farcasterSDK.isInMiniApp();
+        console.log('Is Mini App:', isMiniApp);
+
+        if (isMiniApp) {
+            const sdk = window.farcasterSDK;
+            await sdk.actions.ready();
             
-            // Connect to the contract
-            contract = new ethers.Contract(contractAddress, contractABI, signer);
-            
-            // Update UI
-            document.getElementById('connectButton').style.display = 'none';
-            document.getElementById('disconnectButton').style.display = 'block';
-            document.getElementById('walletInfo').textContent = 
-                `${account.slice(0, 6)}...${account.slice(-4)}`;
-            
-            // Call setWalletConnected to update game state
-            if (window.setWalletConnected) {
-                window.setWalletConnected();
+            if (sdk.wallet.ethProvider) {
+                window.ethereum = sdk.wallet.ethProvider;
+                return await initializeContract(sdk.wallet.ethProvider);
             }
-            
-            // Initialize leaderboard
-            await initializeLeaderboard();
-            
-            return true;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error initializing Farcaster:', error);
+        return false;
+    }
+}
+
+// Connect wallet function
+async function connectWallet() {
+    try {
+        if (typeof window.ethereum !== 'undefined') {
+            return await initializeContract(window.ethereum);
         } else {
-            alert('Please install MetaMask!');
+            console.error('No ethereum provider found');
             return false;
         }
     } catch (error) {
@@ -81,12 +184,102 @@ async function connectWallet() {
     }
 }
 
+// Disconnect wallet function
+async function disconnectWallet() {
+    provider = null;
+    signer = null;
+    contract = null;
+    account = null;
+    isConnected = false;
+    window.contract = null;
+    window.walletConnected = false;
+
+    // Update UI
+    if (document.getElementById('walletInfo')) {
+        document.getElementById('walletInfo').textContent = 'Not Connected';
+    }
+    if (document.getElementById('highScore')) {
+        document.getElementById('highScore').textContent = 'High Score: 0';
+    }
+}
+
+// Submit score function
+async function submitScore(score) {
+    if (!contract || !isConnected) {
+        console.error('Contract not initialized or wallet not connected');
+        return false;
+    }
+
+    try {
+        console.log('Submitting score:', score);
+        
+        // Create the transaction data
+        const data = contract.interface.encodeFunctionData('submitScore', [score]);
+        
+        // Send the transaction using window.ethereum.request and eth_sendTransaction
+        // Manually specify gas in hex to avoid eth_estimateGas
+        const tx = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: account, // The connected account from wallet
+                to: CONTRACT_ADDRESS,
+                data: data,
+                value: '0x0', // 0 ETH
+                gas: '0x30d40' // 200,000 in hexadecimal, manual gas limit
+                // gasPrice or maxFeePerGas/maxPriorityFeePerGas might be needed depending on EIP-1559 support
+                // For simplicity, let's start without them, but keep in mind they might be required.
+            }]
+        });
+        
+        console.log('Transaction sent:', tx);
+        return true;
+    } catch (error) {
+        console.error('Error submitting score:', error);
+        alert('Failed to submit score. Please try again.');
+        return false;
+    }
+}
+
+// Export functions for use in other files
+window.initializeFarcaster = initializeFarcaster;
+window.connectWallet = connectWallet;
+window.disconnectWallet = disconnectWallet;
+window.submitScore = submitScore;
+window.initializeContract = initializeContract;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing...');
+    initializeFarcaster();
+});
+
+// Handle account changes
+if (window.ethereum) {
+    window.ethereum.on('accountsChanged', async (accounts) => {
+        if (accounts.length > 0) {
+            await initializeContract(window.ethereum);
+        } else {
+            await disconnectWallet();
+        }
+    });
+
+    window.ethereum.on('chainChanged', async (chainId) => {
+        const decimal = parseInt(chainId, 16);
+        if (decimal !== 10143) {
+            await disconnectWallet();
+            alert('Please connect to Monad Testnet to play the game.');
+        } else {
+            await initializeContract(window.ethereum);
+        }
+    });
+}
+
 async function switchToMonadTestnet() {
     try {
         // Try to switch to Monad Testnet
         await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: monadTestnet.chainId }],
+            params: [{ chainId: MONAD_TESTNET.chainId }],
         });
         return true;
     } catch (switchError) {
@@ -96,13 +289,13 @@ async function switchToMonadTestnet() {
                 // Add Monad Testnet to MetaMask
                 await window.ethereum.request({
                     method: 'wallet_addEthereumChain',
-                    params: [monadTestnet],
+                    params: [MONAD_TESTNET],
                 });
                 
                 // Try switching again
                 await window.ethereum.request({
                     method: 'wallet_switchEthereumChain',
-                    params: [{ chainId: monadTestnet.chainId }],
+                    params: [{ chainId: MONAD_TESTNET.chainId }],
                 });
                 
                 alert("Monad Testnet has been added to your wallet and selected.");
@@ -140,6 +333,7 @@ function showNetworkInstructions() {
     alert(instructions);
 }
 
+// Update high score function
 async function updateHighScore(score) {
     if (!isConnected) {
         alert("Please connect your wallet first!");
@@ -156,10 +350,22 @@ async function updateHighScore(score) {
         }
         
         // Show a message to the user
-        alert(`Submitting your score of ${score} to the blockchain. Please confirm the transaction in MetaMask.`);
+        alert(`Submitting your score of ${score} to the blockchain. Please confirm the transaction in your wallet.`);
         
-        const tx = await contract.updateScore(score);
-        await tx.wait();
+        // Create the transaction data
+        const data = contract.interface.encodeFunctionData('updateScore', [score]);
+        
+        // Send the transaction using basic eth_sendTransaction
+        const tx = await window.ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [{
+                from: account,
+                to: CONTRACT_ADDRESS,
+                data: data,
+                value: '0x0'
+            }]
+        });
+        
         console.log(`High score updated: ${score}`);
         alert("Score successfully recorded on the blockchain!");
         return Promise.resolve();
@@ -295,102 +501,4 @@ async function initializeLeaderboard() {
     } catch (error) {
         console.error('Error initializing leaderboard:', error);
     }
-}
-
-// Add disconnect wallet function
-async function disconnectWallet() {
-    // Reset all states
-    provider = null;
-    signer = null;
-    contract = null;
-    account = null;
-    
-    // Update UI
-    document.getElementById('connectButton').style.display = 'block';
-    document.getElementById('disconnectButton').style.display = 'none';
-    document.getElementById('walletInfo').textContent = 'Not Connected';
-    document.getElementById('highScore').textContent = 'High Score: 0';
-    
-    // Reset game state
-    if (window.game && window.game.scene.scenes[0]) {
-        const gameScene = window.game.scene.scenes[0];
-        if (gameScene.pauseText) {
-            gameScene.pauseText.setText('Connect Wallet to Play');
-        }
-    }
-    
-    // Dispatch wallet disconnected event
-    window.dispatchEvent(new CustomEvent('walletDisconnected'));
-}
-
-// Add these event listeners at the bottom of the file
-document.addEventListener('DOMContentLoaded', function() {
-    // Existing connect button listener
-    document.getElementById('connectButton').addEventListener('click', connectWallet);
-    
-    // Add disconnect button listener
-    document.getElementById('disconnectButton').addEventListener('click', disconnectWallet);
-});
-
-// Update the account change listener
-if (window.ethereum) {
-    window.ethereum.on('accountsChanged', async (accounts) => {
-        if (accounts.length > 0) {
-            if (window.setWalletConnected) {
-                window.setWalletConnected();
-            }
-        } else {
-            // Handle disconnect
-            await disconnectWallet();
-        }
-    });
-}
-
-// Initially disable game until wallet is connected
-document.getElementById('game').style.opacity = '0.76';
-
-// Listen for network changes
-if (window.ethereum) {
-    window.ethereum.on('chainChanged', async (chainId) => {
-        // Convert chainId to decimal for comparison
-        const decimal = parseInt(chainId, 16);
-        if (decimal !== 10143) {
-            // If not on Monad Testnet, disconnect
-            await disconnectWallet();
-            alert('Please connect to Monad Testnet to play the game.');
-        } else {
-            // If switched to Monad Testnet, try to reconnect
-            connectWallet();
-        }
-    });
-}
-
-async function submitScore(score) {
-    if (!contract) return;
-    
-    try {
-        const tx = await contract.submitScore(score);
-        await tx.wait();
-        console.log('Score submitted successfully');
-        
-        // Update the displays
-        await updateLeaderboard();
-        await updateHighScore();
-    } catch (error) {
-        console.error('Error submitting score:', error);
-    }
-}
-
-async function updateHighScore() {
-    if (!contract || !account) return;
-    
-    try {
-        const highScore = await contract.getHighScore(account);
-        document.getElementById('highScore').textContent = `High Score: ${highScore}`;
-    } catch (error) {
-        console.error('Error getting high score:', error);
-    }
-}
-
-// Make sure to call initializeLeaderboard after wallet connection
-// and submitScore when the game ends 
+} 

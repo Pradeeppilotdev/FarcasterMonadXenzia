@@ -7,7 +7,7 @@
     <link rel="icon"  href="snake-game\assets\molandak.png" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <!-- Add Farcaster meta tags -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://87ef-36-255-17-7.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://87ef-36-255-17-7.ngrok-free.app/","splashImageUrl":"https://87ef-36-255-17-7.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://loyal-fit-sloth.ngrok-free.app/snake-game/assets/molandak3.png","button":{"title":"🐍 Play Snake","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://loyal-fit-sloth.ngrok-free.app/","splashImageUrl":"https://loyal-fit-sloth.ngrok-free.app/snake-game/assets/moyaki.png","splashBackgroundColor":"#0a0a2a"}}}' />
     <style>
         :root {
             --primary-color: #6c63ff;
@@ -462,14 +462,10 @@
     
     <div class="container">
         <div class="ui-container">
-            <div class="wallet-buttons">
-                <button id="connectButton">Connect Wallet</button>
-                <button id="disconnectButton" style="display: none;">Disconnect Wallet</button>
-            </div>
             <div class="game-title">
                 <!-- <p>MONAD XENZIA</p> -->
             </div>
-            <div id="walletInfo">Not Connected</div>
+            <div id="walletInfo" style="text-align: right; padding: 10px;">Not Connected</div>
         </div>
         
         <!-- Add high score display -->
@@ -678,9 +674,6 @@
         // Check on page load
         window.addEventListener('load', checkMobileAndMode);
 
-        // Check on resize (in case user rotates device)
-        // window.addEventListener('resize', checkMobileAndMode);
-
         // Update the touch event handling
         document.querySelectorAll('.control-btn').forEach(button => {
             button.addEventListener('touchstart', (e) => {
@@ -764,33 +757,15 @@
             }
         });
 
-        // Modify the setGameState function to maintain scroll position while still disabling other scrolling
+        // Modify the setGameState function to remove scroll locking
         function setGameState(active) {
             isGameActive = active;
             document.body.classList.toggle('game-active', active);
             updateViewport(active);
             
             if (active) {
-                // When game becomes active, scroll to it first
+                // When game becomes active, just scroll to it
                 scrollToGame();
-                
-                // Only apply fixed position for smaller screens
-                if (window.innerWidth <= 1024) {
-                    setTimeout(() => {
-                        if (isGameActive) { // Check if still active after delay
-                            document.body.style.position = 'fixed';
-                            document.body.style.top = `-${window.scrollY}px`;
-                            document.body.style.width = '100%';
-                        }
-                    }, 500); // Delay to allow smooth scrolling to complete
-                }
-            } else {
-                // When game becomes inactive, restore scroll position
-                const scrollY = document.body.style.top;
-                document.body.style.position = '';
-                document.body.style.top = '';
-                document.body.style.width = '';
-                window.scrollTo(0, parseInt(scrollY || '0') * -1);
             }
         }
 
@@ -878,40 +853,53 @@
         // Remove mobile warning check
         window.checkMobileAndMode = () => {};
 
-        // Wallet connection UI update
+        // Wait for any wallet injection to complete
+        window.addEventListener('load', () => {
+            // Small delay to ensure wallet injection is complete
+            setTimeout(async () => {
+                const success = await initializeFarcaster();
+                if (success) {
+                    console.log('Farcaster initialization complete');
+                } else {
+                    console.error('Farcaster initialization failed');
+                }
+            }, 100);
+        });
+
+        // Initialize Farcaster and contract
         async function initializeFarcaster() {
             try {
+                console.log('Initializing Farcaster...');
                 const isMiniApp = await window.farcasterSDK.isInMiniApp();
+                console.log('Is Mini App:', isMiniApp);
+
                 if (isMiniApp) {
                     const sdk = window.farcasterSDK;
                     await sdk.actions.ready();
-                    const context = await sdk.context;
+                    
                     if (sdk.wallet.ethProvider) {
-                        window.ethereum = sdk.wallet.ethProvider;
-                        document.getElementById('walletInfo').textContent = 'Wallet Connected';
-                    } else {
-                        document.getElementById('walletInfo').textContent = 'Wallet not connected';
+                        // Only set window.ethereum if it's not already set
+                        if (!window.ethereum) {
+                            window.ethereum = sdk.wallet.ethProvider;
+                        }
+                        
+                        // Initialize contract and update UI
+                        const success = await window.initializeContract(sdk.wallet.ethProvider);
+                        if (success) {
+                            console.log('Farcaster and contract initialized successfully');
+                            return true;
+                        } else {
+                            console.error('Failed to initialize contract');
+                            return false;
+                        }
                     }
                 }
+                return false;
             } catch (error) {
-                document.getElementById('walletInfo').textContent = 'Wallet not connected';
                 console.error('Error initializing Farcaster:', error);
+                return false;
             }
         }
-        window.addEventListener('DOMContentLoaded', initializeFarcaster);
-
-        // Disable Connect Wallet button on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            var connectBtn = document.getElementById('connectButton');
-            if (connectBtn) {
-                connectBtn.disabled = true;
-                connectBtn.textContent = 'Disabled';
-                connectBtn.style.background = '#ffb3b3';
-                connectBtn.style.color = '#fff';
-                connectBtn.style.opacity = '0.7';
-                connectBtn.style.cursor = 'none';
-            }
-        });
     </script>
 </body>
 </html>
