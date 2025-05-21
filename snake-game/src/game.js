@@ -487,10 +487,9 @@ function update(time) {
 // End game function
 async function endGame(scene) {
     if (gameOver) return;
-    
     gameOver = true;
     isPaused = true;
-    
+
     // Stop all game elements
     if (snake) {
         snake.destroy();
@@ -510,12 +509,92 @@ async function endGame(scene) {
     if (chogSound) chogSound.stop();
     if (backgroundMusic) backgroundMusic.stop();
     
+    // Create game over container
+    const gameOverContainer = scene.add.container(scene.scale.width / 2, scene.scale.height / 2);
+    
     // Show game over text
-    gameOverText = scene.add.text(scene.scale.width / 2, scene.scale.height / 2, 'Game Over!\nClick to submit score', {
-        fontSize: Math.max(16, Math.floor(scene.scale.width / 25)) + 'px',
+    gameOverText = scene.add.text(0, -30, 'Game Over!', {
+        fontSize: Math.max(20, Math.floor(scene.scale.width / 20)) + 'px',
         fill: '#fff',
         align: 'center'
     }).setOrigin(0.5);
+    
+    // Add score text
+    const finalScoreText = scene.add.text(0, 10, `Score: ${score}`, {
+        fontSize: Math.max(16, Math.floor(scene.scale.width / 25)) + 'px',
+        fill: '#64ffda',
+        align: 'center'
+    }).setOrigin(0.5);
+
+    // Add share button
+    const shareButton = scene.add.text(0, 50, 'Share Score', {
+        fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
+        fill: '#64ffda',
+        backgroundColor: '#1a1a1a',
+        padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive();
+
+    // Add hover effect
+    shareButton.on('pointerover', () => {
+        shareButton.setStyle({ fill: '#fff' });
+    });
+    shareButton.on('pointerout', () => {
+        shareButton.setStyle({ fill: '#64ffda' });
+    });
+
+    // Add click handler for sharing
+    shareButton.on('pointerdown', async () => {
+        if (sdk) {
+            try {
+                shareButton.setText('Sharing...');
+                await sdk.cast(`I scored ${score} in Snake Game! 🐍 Play now: ${window.location.href}`, {
+                    frame: {
+                        url: window.location.href,
+                        button: { label: 'Play Snake', action: 'link', target: window.location.href }
+                    }
+                });
+                shareButton.setText('Score Shared!');
+                setTimeout(() => {
+                    shareButton.setText('Share Score');
+                }, 2000);
+            } catch (error) {
+                console.error('Error sharing score:', error);
+                shareButton.setText('Share Failed');
+                setTimeout(() => {
+                    shareButton.setText('Share Score');
+                }, 2000);
+            }
+        } else {
+            shareButton.setText('Farcaster not connected');
+            setTimeout(() => {
+                shareButton.setText('Share Score');
+            }, 2000);
+        }
+    });
+
+    // Add restart button
+    const restartButton = scene.add.text(0, 90, 'Play Again', {
+        fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
+        fill: '#64ffda',
+        backgroundColor: '#1a1a1a',
+        padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive();
+
+    // Add hover effect
+    restartButton.on('pointerover', () => {
+        restartButton.setStyle({ fill: '#fff' });
+    });
+    restartButton.on('pointerout', () => {
+        restartButton.setStyle({ fill: '#64ffda' });
+    });
+
+    // Add click handler for restart
+    restartButton.on('pointerdown', () => {
+        restartGame(scene);
+    });
+
+    // Add all elements to container
+    gameOverContainer.add([gameOverText, finalScoreText, shareButton, restartButton]);
 
     if (pauseText) {
         pauseText.setVisible(false);
@@ -526,46 +605,39 @@ async function endGame(scene) {
         try {
             console.log('Submitting score:', score);
             const data = window.contract.interface.encodeFunctionData('submitScore', [score]);
-    const txHash = await window.ethereum.request({
-        method: 'eth_sendTransaction',
-        params: [{
-            from: await window.contract.signer.getAddress(),
-            to: window.contract.address,
-            data: data,
-            value: '0x0',
-            gas: '0x30d40' // 200,000 in hex
-        }]
-    });
-    console.log('Transaction sent:', txHash);
+            const txHash = await window.ethereum.request({
+                method: 'eth_sendTransaction',
+                params: [{
+                    from: await window.contract.signer.getAddress(),
+                    to: window.contract.address,
+                    data: data,
+                    value: '0x0',
+                    gas: '0x30d40'
+                }]
+            });
+            console.log('Transaction sent:', txHash);
 
-            // Show success message briefly before restart
-            gameOverText.setText('Score submitted!\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
-            // Try to update leaderboard, but always restart game after
+            // Show success message
+            finalScoreText.setText(`Score: ${score}\nSubmitted!`);
+            
+            // Try to update leaderboard
             if (typeof updateLeaderboard === 'function') {
                 try {
                     await updateLeaderboard();
                 } catch (error) {
                     console.error('Error updating leaderboard:', error);
-                    gameOverText.setText('Score submitted! (Leaderboard error)\nRestarting...').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
                 }
             }
-            setTimeout(() => {
-                restartGame(scene);
-            }, 800);
         } catch (error) {
             console.error('Error submitting score:', error);
             if (error.message.includes('user rejected')) {
-                gameOverText.setText('Transaction rejected!\nClick to try again').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
+                finalScoreText.setText(`Score: ${score}\nTransaction rejected`);
             } else {
-                gameOverText.setText('Error submitting score!\nClick to try again').setFontSize(Math.max(14, Math.floor(scene.scale.width / 32)));
+                finalScoreText.setText(`Score: ${score}\nError submitting`);
             }
-            // Ensure input is enabled before attaching listener
-            scene.input.enabled = true;
-            scene.input.once('pointerdown', () => restartGame(scene)); // Allow clicking to restart
         }
     } else {
-        gameOverText.setText('Wallet not connected!\nPlease connect wallet');
-        scene.input.once('pointerdown', () => endGame(scene));
+        finalScoreText.setText(`Score: ${score}\nConnect wallet to submit`);
     }
 }
 
