@@ -581,28 +581,6 @@
         import { sdk } from 'https://esm.sh/@farcaster/frame-sdk'
         window.farcasterSDK = sdk;
     </script>
-    <script>
-        document.getElementById('shareButton').addEventListener('click', async () => {
-            if (window.farcasterSDK) {
-                try {
-                    const score = window.game ? window.game.scene.scenes[0].score : 0;
-                    await window.farcasterSDK.cast(`I scored ${score} in MONAD XENZIA! 🐍 Play now: ${window.location.href}`, {
-                        frame: {
-                            url: window.location.href,
-                            button: { label: 'Play MONAD XENZIA', action: 'link', target: window.location.href }
-                        }
-                    });
-                    alert('Score shared successfully!');
-                } catch (error) {
-                    console.error('Error sharing score:', error);
-                    alert('Failed to share score. Make sure you\'re in the Farcaster app.');
-                }
-            } else {
-                alert('Please open this game in the Farcaster app to share your score.');
-            }
-        });
-
-    </script>
     <!-- Then load your game files -->
     <script src="snake-game/src/background.js"></script>
     <script src="snake-game/src/blockchain.js"></script>
@@ -974,6 +952,12 @@
                 return false;
             }
         }
+
+        document.getElementById('shareButton').addEventListener('click', async () => {
+            const score = window.game ? window.game.scene.scenes[0].score : 0;
+            const composeUrl = `https://warpcast.com/~/compose?text=Check+out+Monad+Xenzia%2C+an+awesome+mini+app!&embeds[]=https%3A%2F%2Fmonadxenzia.vercel.app%2F`;
+            window.open(composeUrl, '_blank');
+        });
     </script>
 <pre id="debugOutput" style="color: #f88; font-size: 12px; white-space: pre-wrap;"></pre>
 
