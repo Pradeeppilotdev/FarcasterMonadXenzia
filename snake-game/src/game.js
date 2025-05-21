@@ -527,50 +527,50 @@ async function endGame(scene) {
     }).setOrigin(0.5);
 
     // Add share button
-    const shareButton = scene.add.text(0, 50, 'Share Score', {
-        fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
-        fill: '#64ffda',
-        backgroundColor: '#1a1a1a',
-        padding: { x: 10, y: 5 }
-    }).setOrigin(0.5).setInteractive();
+    // const shareButton = scene.add.text(0, 50, 'Share Score', {
+    //     fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
+    //     fill: '#64ffda',
+    //     backgroundColor: '#1a1a1a',
+    //     padding: { x: 10, y: 5 }
+    // }).setOrigin(0.5).setInteractive();
 
-    // Add hover effect
-    shareButton.on('pointerover', () => {
-        shareButton.setStyle({ fill: '#fff' });
-    });
-    shareButton.on('pointerout', () => {
-        shareButton.setStyle({ fill: '#64ffda' });
-    });
+    // // Add hover effect
+    // shareButton.on('pointerover', () => {
+    //     shareButton.setStyle({ fill: '#fff' });
+    // });
+    // shareButton.on('pointerout', () => {
+    //     shareButton.setStyle({ fill: '#64ffda' });
+    // });
 
-    // Add click handler for sharing
-    shareButton.on('pointerdown', async () => {
-        if (sdk) {
-            try {
-                shareButton.setText('Sharing...');
-                await sdk.cast(`I scored ${score} in Snake Game! 🐍 Play now: ${window.location.href}`, {
-                    frame: {
-                        url: window.location.href,
-                        button: { label: 'Play Snake', action: 'link', target: window.location.href }
-                    }
-                });
-                shareButton.setText('Score Shared!');
-                setTimeout(() => {
-                    shareButton.setText('Share Score');
-                }, 2000);
-            } catch (error) {
-                console.error('Error sharing score:', error);
-                shareButton.setText('Share Failed');
-                setTimeout(() => {
-                    shareButton.setText('Share Score');
-                }, 2000);
-            }
-        } else {
-            shareButton.setText('Farcaster not connected');
-            setTimeout(() => {
-                shareButton.setText('Share Score');
-            }, 2000);
-        }
-    });
+    // // Add click handler for sharing
+    // shareButton.on('pointerdown', async () => {
+    //     if (sdk) {
+    //         try {
+    //             shareButton.setText('Sharing...');
+    //             await sdk.cast(`I scored ${score} in Snake Game! 🐍 Play now: ${window.location.href}`, {
+    //                 frame: {
+    //                     url: window.location.href,
+    //                     button: { label: 'Play Snake', action: 'link', target: window.location.href }
+    //                 }
+    //             });
+    //             shareButton.setText('Score Shared!');
+    //             setTimeout(() => {
+    //                 shareButton.setText('Share Score');
+    //             }, 2000);
+    //         } catch (error) {
+    //             console.error('Error sharing score:', error);
+    //             shareButton.setText('Share Failed');
+    //             setTimeout(() => {
+    //                 shareButton.setText('Share Score');
+    //             }, 2000);
+    //         }
+    //     } else {
+    //         shareButton.setText('Farcaster not connected');
+    //         setTimeout(() => {
+    //             shareButton.setText('Share Score');
+    //         }, 2000);
+    //     }
+    // });
 
     // Add restart button
     const restartButton = scene.add.text(0, 90, 'Play Again', {
@@ -594,7 +594,7 @@ async function endGame(scene) {
     });
 
     // Add all elements to container
-    gameOverContainer.add([gameOverText, finalScoreText, shareButton, restartButton]);
+    gameOverContainer.add([gameOverText, finalScoreText, restartButton]);
 
     if (pauseText) {
         pauseText.setVisible(false);
