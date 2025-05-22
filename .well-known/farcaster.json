@@ -7,11 +7,11 @@
   "frame": {
     "version": "1",
     "name": "Monad Xenzia",
-    "iconUrl": "https://monadxenzia.vercel.app/snake-game/assets/molandak1.png",
+    "iconUrl": "https://monadxenzia.vercel.app/snake-game/assets/splashimage.jpg",
     "homeUrl": "https://monadxenzia.vercel.app/",
     "imageUrl": "https://monadxenzia.vercel.app/snake-game/assets/farcasterstart.jpg",
     "buttonTitle": "🐍 Play Monad Xenzia",
-    "splashImageUrl": "https://monadxenzia.vercel.app/snake-game/assets/salmonadforfarcaster.png",
+    "splashImageUrl": "https://monadxenzia.vercel.app/snake-game/assets/splashimageoffc.jpg",
     "splashBackgroundColor": "#0a0a2a"
   }
 }
