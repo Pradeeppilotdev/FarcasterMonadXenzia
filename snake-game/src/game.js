@@ -403,8 +403,8 @@ function update(time) {
             snakeSegments.push(newSegment);
 
             // Move food to new grid position
-            moyaki.x = Phaser.Math.Between(2, 31) * GRID_SIZE;
-            moyaki.y = Phaser.Math.Between(2, 28) * GRID_SIZE;
+            moyaki.x = Phaser.Math.Between(2, 26) * GRID_SIZE;
+            moyaki.y = Phaser.Math.Between(2, 21) * GRID_SIZE;
 
             // Update score and handle special food
             if (moyaki.texture.key === 'chog') {
