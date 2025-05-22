@@ -46,29 +46,24 @@ let fatnadsjohnNextAppear = 0;
 
 async function initializeFarcaster() {
     try {
-        // Check if we're in a Farcaster mini app
-        const isMiniApp = await window.farcasterSDK.isInMiniApp();
+        console.log('Initializing Farcaster...');
+        const isMiniApp = await window.farcasterSDK?.isInMiniApp();
+        console.log('Is Mini App:', isMiniApp);
+
         if (isMiniApp) {
-            sdk = window.farcasterSDK;
-            
-            // Hide splash screen when game is ready
+            const sdk = window.farcasterSDK;
             await sdk.actions.ready();
             
-            // Get Farcaster context
-            const context = await sdk.context;
-            console.log('Farcaster context:', context);
-            
-            // Use Farcaster's wallet provider
             if (sdk.wallet.ethProvider) {
+                console.log('Setting up Farcaster wallet provider');
                 window.ethereum = sdk.wallet.ethProvider;
-                walletConnected = true;
-                if (pauseText) {
-                    pauseText.setText('Press SPACE to Start');
-                }
+                return await initializeContract(sdk.wallet.ethProvider);
             }
         }
+        return false;
     } catch (error) {
         console.error('Error initializing Farcaster:', error);
+        return false;
     }
 }
 
@@ -526,52 +521,6 @@ async function endGame(scene) {
         align: 'center'
     }).setOrigin(0.5);
 
-    // Add share button
-    // const shareButton = scene.add.text(0, 50, 'Share Score', {
-    //     fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
-    //     fill: '#64ffda',
-    //     backgroundColor: '#1a1a1a',
-    //     padding: { x: 10, y: 5 }
-    // }).setOrigin(0.5).setInteractive();
-
-    // // Add hover effect
-    // shareButton.on('pointerover', () => {
-    //     shareButton.setStyle({ fill: '#fff' });
-    // });
-    // shareButton.on('pointerout', () => {
-    //     shareButton.setStyle({ fill: '#64ffda' });
-    // });
-
-    // // Add click handler for sharing
-    // shareButton.on('pointerdown', async () => {
-    //     if (sdk) {
-    //         try {
-    //             shareButton.setText('Sharing...');
-    //             await sdk.cast(`I scored ${score} in Snake Game! 🐍 Play now: ${window.location.href}`, {
-    //                 frame: {
-    //                     url: window.location.href,
-    //                     button: { label: 'Play Snake', action: 'link', target: window.location.href }
-    //                 }
-    //             });
-    //             shareButton.setText('Score Shared!');
-    //             setTimeout(() => {
-    //                 shareButton.setText('Share Score');
-    //             }, 2000);
-    //         } catch (error) {
-    //             console.error('Error sharing score:', error);
-    //             shareButton.setText('Share Failed');
-    //             setTimeout(() => {
-    //                 shareButton.setText('Share Score');
-    //             }, 2000);
-    //         }
-    //     } else {
-    //         shareButton.setText('Farcaster not connected');
-    //         setTimeout(() => {
-    //             shareButton.setText('Share Score');
-    //         }, 2000);
-    //     }
-    // });
-
     // Add restart button
     const restartButton = scene.add.text(0, 90, 'Play Again', {
         fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
@@ -603,21 +552,72 @@ async function endGame(scene) {
     // Submit score if wallet is connected
     if (window.walletConnected && window.contract) {
         try {
-            console.log('Submitting score:', score);
-            const data = window.contract.interface.encodeFunctionData('submitScore', [score]);
-            const txHash = await window.ethereum.request({
-                method: 'eth_sendTransaction',
-                params: [{
-                    from: await window.contract.signer.getAddress(),
-                    to: window.contract.address,
-                    data: data,
-                    value: '0x0',
-                    gas: '0x30d40'
-                }]
-            });
-            console.log('Transaction sent:', txHash);
+            console.log('Attempting to submit score:', score);
+            
+            // Check if we're in a Farcaster mini app
+            const isMiniApp = await window.farcasterSDK?.isInMiniApp();
+            console.log('Is Farcaster Mini App:', isMiniApp);
 
-            // Show success message
+            // Ensure we have a valid ethereum provider
+            if (!window.ethereum) {
+                throw new Error('No Ethereum provider found');
+            }
+
+            // Get the current account
+            let accounts;
+            try {
+                if (isMiniApp && window.farcasterSDK?.wallet?.ethProvider) {
+                    // Use Farcaster wallet
+                    accounts = await window.farcasterSDK.wallet.ethProvider.request({ method: 'eth_accounts' });
+                } else {
+                    // Use regular wallet
+                    accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                }
+            } catch (error) {
+                console.error('Error getting accounts:', error);
+                throw new Error('Failed to get wallet accounts');
+            }
+
+            if (!accounts || accounts.length === 0) {
+                throw new Error('No accounts found');
+            }
+
+            const currentAccount = accounts[0];
+            console.log('Current account:', currentAccount);
+            
+            // Verify contract is initialized
+            if (!window.contract || !window.contract.interface) {
+                throw new Error('Contract not properly initialized');
+            }
+
+            // Create the transaction data
+            const data = window.contract.interface.encodeFunctionData('submitScore', [score]);
+            
+            // Send the transaction using the appropriate provider
+            const txHash = await (isMiniApp ? 
+                window.farcasterSDK.wallet.ethProvider.request({
+                    method: 'eth_sendTransaction',
+                    params: [{
+                        from: currentAccount,
+                        to: window.contract.address,
+                        data: data,
+                        value: '0x0',
+                        gas: '0x30d40'
+                    }]
+                }) :
+                window.ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [{
+                        from: currentAccount,
+                        to: window.contract.address,
+                        data: data,
+                        value: '0x0',
+                        gas: '0x30d40'
+                    }]
+                })
+            );
+            
+            console.log('Transaction sent:', txHash);
             finalScoreText.setText(`Score: ${score}\nSubmitted!`);
             
             // Try to update leaderboard
@@ -632,6 +632,14 @@ async function endGame(scene) {
             console.error('Error submitting score:', error);
             if (error.message.includes('user rejected')) {
                 finalScoreText.setText(`Score: ${score}\nTransaction rejected`);
+            } else if (error.message.includes('No accounts found')) {
+                finalScoreText.setText(`Score: ${score}\nPlease reconnect wallet`);
+                // Try to reconnect wallet
+                try {
+                    await setWalletConnected();
+                } catch (reconnectError) {
+                    console.error('Error reconnecting wallet:', reconnectError);
+                }
             } else {
                 finalScoreText.setText(`Score: ${score}\nError submitting`);
             }
@@ -779,39 +787,102 @@ window.restartGame = restartGame;
 
 // Update the setWalletConnected function
 async function setWalletConnected() {
-    if (window.farcasterSDK && window.farcasterSDK.wallet.ethProvider) {
-        try {
+    try {
+        // First check if we're in a Farcaster mini app
+        const isMiniApp = await window.farcasterSDK?.isInMiniApp();
+        console.log('Is Farcaster Mini App:', isMiniApp);
+
+        if (isMiniApp && window.farcasterSDK?.wallet?.ethProvider) {
+            console.log('Using Farcaster wallet provider');
             window.ethereum = window.farcasterSDK.wallet.ethProvider;
-            walletConnected = true;
-            window.walletConnected = true;
-            
-            // Initialize contract using blockchain.js
-            const success = await window.initializeContract(window.ethereum);
-            if (!success) {
-                throw new Error('Failed to initialize contract');
-            }
-            
-            // Update pause text if it exists
-            if (pauseText) {
-                pauseText.setText('Press SPACE to Start');
-                pauseText.setVisible(true);
-            }
-            
-            // Reset game state
-            isPaused = true;
-            gameOver = false;
-            
-            return true;
-        } catch (error) {
-            console.error('Error initializing contract:', error);
-            if (pauseText) {
-                pauseText.setText('Error initializing contract');
-                pauseText.setVisible(true);
-            }
-            return false;
+        } else if (window.ethereum) {
+            console.log('Using browser wallet provider');
+            window.ethereum = window.ethereum;
+        } else {
+            throw new Error('No Ethereum provider found');
         }
+
+        // Request accounts if not already connected
+        let accounts;
+        try {
+            accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (!accounts || accounts.length === 0) {
+                accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            }
+        } catch (error) {
+            console.error('Error requesting accounts:', error);
+            throw new Error('Failed to get wallet accounts');
+        }
+
+        if (!accounts || accounts.length === 0) {
+            throw new Error('No accounts found');
+        }
+
+        // Store the current account
+        const currentAccount = accounts[0];
+        console.log('Connected account:', currentAccount);
+
+        // Set up account change listener only if not in Farcaster
+        if (!isMiniApp) {
+            window.ethereum.on('accountsChanged', async (newAccounts) => {
+                if (newAccounts.length === 0) {
+                    // User disconnected their wallet
+                    walletConnected = false;
+                    window.walletConnected = false;
+                    if (pauseText) {
+                        pauseText.setText('Connect wallet to submit score\nPress SPACE to Start');
+                    }
+                } else {
+                    // User switched accounts
+                    await initializeContract(window.ethereum);
+                }
+            });
+
+            // Set up chain change listener only if not in Farcaster
+            window.ethereum.on('chainChanged', async (chainId) => {
+                const decimal = parseInt(chainId, 16);
+                if (decimal !== 10143) { // Monad Testnet
+                    walletConnected = false;
+                    window.walletConnected = false;
+                    if (pauseText) {
+                        pauseText.setText('Please switch to Monad Testnet\nPress SPACE to Start');
+                    }
+                } else {
+                    await initializeContract(window.ethereum);
+                }
+            });
+        }
+
+        walletConnected = true;
+        window.walletConnected = true;
+        
+        // Initialize contract using blockchain.js
+        const success = await window.initializeContract(window.ethereum);
+        if (!success) {
+            throw new Error('Failed to initialize contract');
+        }
+        
+        // Update pause text if it exists
+        if (pauseText) {
+            pauseText.setText('Press SPACE to Start');
+            pauseText.setVisible(true);
+        }
+        
+        // Reset game state
+        isPaused = true;
+        gameOver = false;
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing wallet:', error);
+        walletConnected = false;
+        window.walletConnected = false;
+        if (pauseText) {
+            pauseText.setText('Error connecting wallet\nPress SPACE to Start');
+            pauseText.setVisible(true);
+        }
+        return false;
     }
-    return false;
 }
 
 // Add this function to check wallet connection status
