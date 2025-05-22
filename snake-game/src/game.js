@@ -439,20 +439,20 @@ function update(time) {
         const edge = Phaser.Utils.Array.GetRandom(edges);
         let x, y, dir;
         if (edge === 'top') {
-            x = Phaser.Math.Between(0, 800);
+            x = Phaser.Math.Between(0, 345);
             y = 0;
             dir = { x: 0, y: 1 };
         } else if (edge === 'bottom') {
-            x = Phaser.Math.Between(0, 800);
-            y = 600;
+            x = Phaser.Math.Between(0, 345);
+            y = 295;
             dir = { x: 0, y: -1 };
         } else if (edge === 'left') {
             x = 0;
-            y = Phaser.Math.Between(0, 600);
+            y = Phaser.Math.Between(0, 295);
             dir = { x: 1, y: 0 };
         } else {
-            x = 800;
-            y = Phaser.Math.Between(0, 600);
+            x = 345;
+            y = Phaser.Math.Between(0, 295);
             dir = { x: -1, y: 0 };
         }
         fatnadsjohn = this.add.sprite(x, y, 'fatnadsjohn');
@@ -840,7 +840,7 @@ function calculateMoveDelay(currentScore) {
 
 // Set Phaser config to fixed 320x295
 let config = {
-    type: Phaser.AUTO,
+    type: Phaser.WEBGL,
     width: 345,
     height: 295,
     backgroundColor: '#2d2d2d',
