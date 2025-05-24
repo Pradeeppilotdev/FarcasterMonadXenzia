@@ -513,8 +513,8 @@
             </div>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button id="shareButton">
-                    <i class="fas fa-share-alt"></i>
-                    Share
+                    <i class="fas fa-plus-circle"></i>
+                    Add it in!
                 </button>
                 <div id="walletInfo" style="text-align: right; padding: 10px;">Not Connected</div>
             </div>
@@ -954,9 +954,19 @@
         }
 
         document.getElementById('shareButton').addEventListener('click', async () => {
-            const score = window.game ? window.game.scene.scenes[0].score : 0;
-            const composeUrl = `https://farcaster.xyz/~/compose?text=Yo+sup+frens+play+Monad+Xenzia%2C+an+awesome+mini+app+game+on+monad!&embeds[]=https%3A%2F%2Fmonadxenzia.vercel.app%2F`;
-            window.open(composeUrl, '_blank');
+            console.log('Add to Mini Apps button clicked.');
+            if (window.farcasterSDK && window.farcasterSDK.addMiniApp) {
+                try {
+                    await window.farcasterSDK.addMiniApp();
+                    console.log('addMiniApp action called.');
+                } catch (error) {
+                    console.error('Error calling addMiniApp:', error);
+                    alert('Could not add Mini App. Make sure you are in the Farcaster app.');
+                }
+            } else {
+                console.warn('Farcaster SDK or addMiniApp function not available.');
+                alert('This action is only available within the Farcaster app mini-app.');
+            }
         });
     </script>
 <pre id="debugOutput" style="color: #f88; font-size: 12px; white-space: pre-wrap;"></pre>
