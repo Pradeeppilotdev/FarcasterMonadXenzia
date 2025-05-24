@@ -12,6 +12,8 @@
     "imageUrl": "https://monadxenzia.vercel.app/snake-game/assets/farcasterstart.jpg",
     "buttonTitle": "🐍 Play Monad Xenzia",
     "splashImageUrl": "https://monadxenzia.vercel.app/snake-game/assets/splashimageoffc.jpg",
-    "splashBackgroundColor": "#0a0a2a"
+    "splashBackgroundColor": "#0a0a2a",
+    "tags": ["game", "snake", "monad", "miniapp"],
+    "primaryCategory": "games"
   }
 }
