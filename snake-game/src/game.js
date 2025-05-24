@@ -508,18 +508,62 @@ async function endGame(scene) {
     const gameOverContainer = scene.add.container(scene.scale.width / 2, scene.scale.height / 2);
     
     // Show game over text
-    gameOverText = scene.add.text(0, -30, 'Game Over!', {
+    gameOverText = scene.add.text(0, -60, 'Game Over!', {
         fontSize: Math.max(20, Math.floor(scene.scale.width / 20)) + 'px',
         fill: '#fff',
         align: 'center'
     }).setOrigin(0.5);
     
     // Add score text
-    const finalScoreText = scene.add.text(0, 10, `Score: ${score}`, {
+    const finalScoreText = scene.add.text(0, -20, `Score: ${score}`, {
         fontSize: Math.max(16, Math.floor(scene.scale.width / 25)) + 'px',
         fill: '#64ffda',
         align: 'center'
     }).setOrigin(0.5);
+
+    // Add Share Score button
+    const shareButton = scene.add.text(0, 40, 'Share Score', {
+        fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
+        fill: '#fff',
+        backgroundColor: '#1a1a1a',
+        padding: { x: 10, y: 5 }
+    }).setOrigin(0.5).setInteractive();
+
+    // Add hover effect for Share button
+    shareButton.on('pointerover', () => {
+        shareButton.setStyle({ fill: '#64ffda' });
+    });
+    shareButton.on('pointerout', () => {
+        shareButton.setStyle({ fill: '#fff' });
+    });
+
+    // Add click handler for Share button
+    shareButton.on('pointerdown', async () => {
+        const currentScore = score; // Use the final score
+        const shareText = `🐍 Just scored ${currentScore} on Monad Xenzia! Can you beat my score? Play now and join the fun! 🎮`;
+        const gameUrl = 'https://farcaster.xyz/miniapps/FIoBBJFztuQl/monad-xenzia'; // Replace with your game URL
+
+        if (window.farcasterSDK && window.farcasterSDK.composeCast) {
+            // Use Farcaster SDK composeCast in mini-app
+            try {
+                await window.farcasterSDK.composeCast({
+                    text: shareText,
+                    embeds: [{ url: gameUrl }],
+                    close: true // Close the compose window after casting
+                });
+                console.log('Score shared via Farcaster SDK');
+            } catch (error) {
+                console.error('Error sharing via Farcaster SDK:', error);
+                // Fallback to opening URL if SDK fails
+                const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
+                window.open(fallbackUrl, '_blank');
+            }
+        } else {
+            // Fallback to opening Warpcast URL in a new tab
+            const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
+            window.open(fallbackUrl, '_blank');
+        }
+    });
 
     // Add restart button
     const restartButton = scene.add.text(0, 90, 'Play Again', {
@@ -529,7 +573,7 @@ async function endGame(scene) {
         padding: { x: 10, y: 5 }
     }).setOrigin(0.5).setInteractive();
 
-    // Add hover effect
+    // Add hover effect for Restart button
     restartButton.on('pointerover', () => {
         restartButton.setStyle({ fill: '#fff' });
     });
@@ -543,7 +587,7 @@ async function endGame(scene) {
     });
 
     // Add all elements to container
-    gameOverContainer.add([gameOverText, finalScoreText, restartButton]);
+    gameOverContainer.add([gameOverText, finalScoreText, shareButton, restartButton]);
 
     if (pauseText) {
         pauseText.setVisible(false);
