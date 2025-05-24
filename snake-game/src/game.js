@@ -524,18 +524,10 @@ async function endGame(scene) {
     // Add Share Score button
     const shareButton = scene.add.text(0, 40, 'Share Score', {
         fontSize: Math.max(14, Math.floor(scene.scale.width / 30)) + 'px',
-        fill: '#fff',
+        fill: '#64ffda',
         backgroundColor: '#1a1a1a',
         padding: { x: 10, y: 5 }
     }).setOrigin(0.5).setInteractive();
-
-    // Add hover effect for Share button
-    shareButton.on('pointerover', () => {
-        shareButton.setStyle({ fill: '#64ffda' });
-    });
-    shareButton.on('pointerout', () => {
-        shareButton.setStyle({ fill: '#fff' });
-    });
 
     // Add click handler for Share button
     shareButton.on('pointerdown', async () => {
@@ -572,14 +564,6 @@ async function endGame(scene) {
         backgroundColor: '#1a1a1a',
         padding: { x: 10, y: 5 }
     }).setOrigin(0.5).setInteractive();
-
-    // Add hover effect for Restart button
-    restartButton.on('pointerover', () => {
-        restartButton.setStyle({ fill: '#fff' });
-    });
-    restartButton.on('pointerout', () => {
-        restartButton.setStyle({ fill: '#64ffda' });
-    });
 
     // Add click handler for restart
     restartButton.on('pointerdown', () => {
