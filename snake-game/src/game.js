@@ -527,10 +527,18 @@ async function endGame(scene) {
         fill: '#64ffda',
         backgroundColor: '#1a1a1a',
         padding: { x: 10, y: 5 }
-    }).setOrigin(0.5).setInteractive();
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    // Add hover effect for Share button
+    shareButton.on('pointerover', () => {
+        shareButton.setStyle({ fill: '#64ffda' });
+    });
+    shareButton.on('pointerout', () => {
+        shareButton.setStyle({ fill: '#fff' });
+    });
 
     // Add click handler for Share button
-    shareButton.on('pointerdown', async () => {
+    shareButton.on('pointerup', async () => {
         const currentScore = score; // Use the final score
         const shareText = `🐍 Just scored ${currentScore} on Monad Xenzia! Can you beat my score? Play now and join the fun! 🎮`;
         const gameUrl = 'https://farcaster.xyz/miniapps/FIoBBJFztuQl/monad-xenzia'; // Replace with your game URL
@@ -564,6 +572,14 @@ async function endGame(scene) {
         backgroundColor: '#1a1a1a',
         padding: { x: 10, y: 5 }
     }).setOrigin(0.5).setInteractive();
+
+    // Add hover effect for Restart button
+    restartButton.on('pointerover', () => {
+        restartButton.setStyle({ fill: '#fff' });
+    });
+    restartButton.on('pointerout', () => {
+        restartButton.setStyle({ fill: '#64ffda' });
+    });
 
     // Add click handler for restart
     restartButton.on('pointerdown', () => {
