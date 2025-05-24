@@ -555,12 +555,12 @@ async function endGame(scene) {
             } catch (error) {
                 console.error('Error sharing via Farcaster SDK:', error);
                 // Fallback to opening URL if SDK fails
-                const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
+                const fallbackUrl = `https://farcaster.xyz/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
                 window.open(fallbackUrl, '_blank');
             }
         } else {
             // Fallback to opening Warpcast URL in a new tab
-            const fallbackUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
+            const fallbackUrl = `https://farcaster.xyz/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(gameUrl)}`;
             window.open(fallbackUrl, '_blank');
         }
     });
