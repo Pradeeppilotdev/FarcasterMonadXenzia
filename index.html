@@ -514,7 +514,7 @@
             <div style="display: flex; gap: 10px; align-items: center;">
                 <button id="shareButton">
                     <i class="fas fa-plus-circle"></i>
-                    Add it in!
+                    Add it!
                 </button>
                 <div id="walletInfo" style="text-align: right; padding: 10px;">Not Connected</div>
             </div>
@@ -955,17 +955,29 @@
 
         document.getElementById('shareButton').addEventListener('click', async () => {
             console.log('Add to Mini Apps button clicked.');
-            if (window.farcasterSDK && window.farcasterSDK.addMiniApp) {
+            if (window.farcasterSDK && window.farcasterSDK.actions && window.farcasterSDK.actions.addFrame) {
                 try {
-                    await window.farcasterSDK.addMiniApp();
-                    console.log('addMiniApp action called.');
+                    // Attempt to use addFrame
+                    await window.farcasterSDK.actions.addFrame();
+                    console.log('addFrame action called.');
                 } catch (error) {
-                    console.error('Error calling addMiniApp:', error);
-                    alert('Could not add Mini App. Make sure you are in the Farcaster app.');
+                    console.error('Error calling addFrame:', error);
+                    alert('Could not add Mini App (addFrame failed). Error: ' + error.message);
                 }
-            } else {
-                console.warn('Farcaster SDK or addMiniApp function not available.');
-                alert('This action is only available within the Farcaster app mini-app.');
+            } else if (window.farcasterSDK && window.farcasterSDK.addMiniApp) {
+                 // Fallback check for addMiniApp just in case
+                 console.warn('addFrame not available, falling back to addMiniApp check.');
+                 try {
+                     await window.farcasterSDK.addMiniApp();
+                     console.log('addMiniApp action called as fallback.');
+                 } catch (error) {
+                      console.error('Error calling addMiniApp fallback:', error);
+                      alert('Could not add Mini App (addMiniApp fallback failed). Error: ' + error.message);
+                 }
+            }
+             else {
+                console.warn('Farcaster SDK, actions object, addFrame or addMiniApp function not available.');
+                alert('Add Mini App functionality not available in this environment.');
             }
         });
     </script>
