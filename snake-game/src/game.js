@@ -953,6 +953,118 @@ function calculateMoveDelay(currentScore) {
     return Math.max(BASE_MOVE_DELAY - reduction, MIN_MOVE_DELAY);
 }
 
+// Add this function to update the leaderboard
+async function updateLeaderboard() {
+    try {
+        if (!window.contract || !window.ethereum) {
+            console.error('Contract or ethereum provider not initialized');
+            return;
+        }
+
+        // Get current account
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const currentAccount = accounts[0];
+
+        // Get top 100 scores
+        const topScores = await window.contract.getTopScores(100);
+        
+        // Create a map to store unique player scores (keeping only highest score per player)
+        const uniquePlayerScores = new Map();
+        
+        // Process scores to keep only highest score per player
+        topScores.forEach(score => {
+            const existingScore = uniquePlayerScores.get(score.player);
+            if (!existingScore || score.score > existingScore.score) {
+                uniquePlayerScores.set(score.player, score);
+            }
+        });
+        
+        // Convert map to array and sort by score
+        const sortedScores = Array.from(uniquePlayerScores.values())
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 100); // Take top 100
+        
+        // Update leaderboard table
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (leaderboardBody) {
+            leaderboardBody.innerHTML = '';
+            
+            sortedScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                
+                // Format address to show only first 6 and last 4 characters
+                const shortAddress = `${score.player.slice(0, 6)}...${score.player.slice(-4)}`;
+                
+                // Format timestamp to readable date
+                const date = new Date(score.timestamp * 1000);
+                const formattedDate = date.toLocaleDateString();
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${shortAddress}</td>
+                    <td>${score.score}</td>
+                    <td>${formattedDate}</td>
+                `;
+                
+                // Highlight user's score if account is connected
+                if (currentAccount && score.player.toLowerCase() === currentAccount.toLowerCase()) {
+                    row.style.backgroundColor = '#64ffda20';
+                }
+                
+                leaderboardBody.appendChild(row);
+            });
+        }
+
+        // Update user's rank section only if account is connected
+        const userRankDiv = document.getElementById('userRank');
+        if (userRankDiv) {
+            if (currentAccount) {
+                try {
+                    const userHighScore = await window.contract.getHighScore(currentAccount);
+                    const userHighScoreTimestamp = await window.contract.getHighScoreTimestamp(currentAccount);
+                    
+                    if (userHighScore > 0) {
+                        const date = new Date(userHighScoreTimestamp * 1000);
+                        const formattedDate = date.toLocaleDateString();
+                        
+                        // Find user's rank in the sorted scores
+                        const userRank = sortedScores.findIndex(score => 
+                            score.player.toLowerCase() === currentAccount.toLowerCase()
+                        ) + 1;
+                        
+                        userRankDiv.innerHTML = `
+                            <h4>Your High Score</h4>
+                            <p>Score: ${userHighScore}</p>
+                            <p>Rank: ${userRank > 0 ? userRank : 'Not in top 100'}</p>
+                            <p>Achieved on: ${formattedDate}</p>
+                        `;
+                    } else {
+                        userRankDiv.innerHTML = '<p>Play a game to get on the leaderboard!</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching user high score:', error);
+                    userRankDiv.innerHTML = '<p>Error loading your high score</p>';
+                }
+            } else {
+                userRankDiv.innerHTML = '<p></p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating leaderboard:', error);
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (leaderboardBody) {
+            leaderboardBody.innerHTML = '<tr><td colspan="4">Error loading leaderboard</td></tr>';
+        }
+        const userRankDiv = document.getElementById('userRank');
+        if (userRankDiv) {
+            userRankDiv.innerHTML = '<p>Error loading leaderboard</p>';
+        }
+    }
+}
+
+// Make updateLeaderboard available globally
+window.updateLeaderboard = updateLeaderboard;
+
 // Set Phaser config to fixed 320x295
 let config = {
     type: Phaser.WEBGL,

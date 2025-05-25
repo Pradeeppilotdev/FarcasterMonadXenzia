@@ -10,7 +10,7 @@
     <meta name="theme-color" content="#0a0a2a" />
 
     <!-- Add Farcaster meta tags -->
-    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://monadxenzia.vercel.app/snake-game/assets/farcastercoverimage.jpg","button":{"title":"🐍 Play Monad Xenzia","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://monadxenzia.vercel.app/","splashImageUrl":"https://monadxenzia.vercel.app/snake-game/assets/splashimageoffc.jpg","splashBackgroundColor":"#0a0a2a"}}}' />
+    <meta name="fc:frame" content='{"version":"next","imageUrl":"https://monadxenzia.vercel.app/snake-game/assets/farcastercoverimage.jpg","button":{"title":"🐍 Play Monad Xenzia","action":{"type":"launch_frame","name":"MONAD XENZIA","url":"https://6d4a-220-158-156-187.ngrok-free.app/","splashImageUrl":"https://monadxenzia.vercel.app/snake-game/assets/splashimageoffc.jpg","splashBackgroundColor":"#0a0a2a"}}}' />
     <style>
         :root {
             --primary-color: #6c63ff;
@@ -195,6 +195,7 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             overflow-y: auto;
             max-height: 200px;
+            font-size: 10px;
         }
         
         .leaderboard h3 {
@@ -202,11 +203,13 @@
             color: var(--secondary-color);
             margin-bottom: 15px;
             text-shadow: 0 0 5px rgba(108, 99, 255, 0.5);
+            font-size: 10px;
         }
         
         .leaderboard-table {
             width: 100%;
             border-collapse: collapse;
+            font-size: 10px;
         }
         
         .leaderboard-table th,
@@ -214,10 +217,12 @@
             padding: 8px;
             text-align: left;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 10px;
         }
         
         .leaderboard-table th {
             color: var(--secondary-color);
+            font-size: 10px;
         }
         
         #userRank {
@@ -540,7 +545,7 @@
                 <button class="control-btn" id="downBtn">↓</button>
             </div>
         </div>
-<!-- 
+
        
         <div class="leaderboard">
             <h3>Global Leaderboard</h3>
@@ -550,6 +555,7 @@
                         <th>Rank</th>
                         <th>Address</th>
                         <th>Score</th>
+                        <th>Date</th>
                     </tr>
                 </thead>
                 <tbody id="leaderboardBody">
@@ -557,7 +563,7 @@
                 </tbody>
             </table>
             <div id="userRank"></div>
-        </div> -->
+        </div>
         
         <div class="how-to-play">
             <h3>How to play</h3>
