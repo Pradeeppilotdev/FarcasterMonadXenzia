@@ -1057,7 +1057,7 @@ async function updateLeaderboard() {
         }
         const userRankDiv = document.getElementById('userRank');
         if (userRankDiv) {
-            userRankDiv.innerHTML = '<p>Error loading leaderboard</p>';
+            userRankDiv.innerHTML = '<p></p>';
         }
     }
 }
