@@ -540,7 +540,7 @@ async function endGame(scene) {
     // Add click handler for Share button
     shareButton.on('pointerup', async () => {
         const currentScore = score; // Use the final score
-        const shareText = `🐍 Just scored ${currentScore} on Monad Xenzia! Can you beat my score? Play now and join the fun! 🎮`;
+        const shareText = `🐍 Just scored ${currentScore} on Monad Xenzia! built by @pradeep-pilot Can you beat my score? Play now and join the fun! 🎮`;
         const gameUrl = 'https://farcaster.xyz/miniapps/FIoBBJFztuQl/monad-xenzia'; // Replace with your game URL
 
         if (window.farcasterSDK && window.farcasterSDK.composeCast) {
@@ -694,7 +694,7 @@ async function endGame(scene) {
                     console.error('Error reconnecting wallet:', reconnectError);
                 }
             } else {
-                finalScoreText.setText(`Score: ${score}\nError submitting`);
+                // finalScoreText.setText(`Score: ${score}\nError submitting`);
             }
         }
     } else {
