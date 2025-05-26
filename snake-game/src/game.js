@@ -664,10 +664,19 @@ async function endGame(scene) {
             console.log('Transaction sent:', txHash);
             finalScoreText.setText(`Score: ${score}\nSubmitted!`);
             
+            // Wait for transaction to be mined
+            const provider = new ethers.providers.Web3Provider(window.ethereum);
+            const receipt = await provider.waitForTransaction(txHash);
+            console.log('Transaction mined:', receipt);
+            
+            // Update high score display immediately after transaction is mined
+            console.log('Updating high score display after transaction...');
+            await updateHighScoreDisplay();
+            
             // Try to update leaderboard
-            if (typeof updateLeaderboard === 'function') {
+            if (typeof window.updateLeaderboard === 'function') {
                 try {
-                    await updateLeaderboard();
+                    await window.updateLeaderboard();
                 } catch (error) {
                     console.error('Error updating leaderboard:', error);
                 }
@@ -879,6 +888,11 @@ async function setWalletConnected() {
                 } else {
                     // User switched accounts
                     await initializeContract(window.ethereum);
+                    // Add delayed high score update
+                    setTimeout(async () => {
+                        console.log('Delayed high score update after account change...');
+                        await updateHighScoreDisplay();
+                    }, 3000);
                 }
             });
 
@@ -893,6 +907,11 @@ async function setWalletConnected() {
                     }
                 } else {
                     await initializeContract(window.ethereum);
+                    // Add delayed high score update
+                    setTimeout(async () => {
+                        console.log('Delayed high score update after chain change...');
+                        await updateHighScoreDisplay();
+                    }, 3000);
                 }
             });
         }
@@ -906,6 +925,12 @@ async function setWalletConnected() {
             throw new Error('Failed to initialize contract');
         }
         
+        // Add delayed high score update after wallet connection
+        setTimeout(async () => {
+            console.log('Delayed high score update after wallet connection...');
+            await updateHighScoreDisplay();
+        }, 3000);
+        
         // Update pause text if it exists
         if (pauseText) {
             pauseText.setText('Press SPACE to Start');
@@ -918,7 +943,7 @@ async function setWalletConnected() {
         
         return true;
     } catch (error) {
-        console.error('Error initializing wallet:', error);
+        console.error('Error in setWalletConnected:', error);
         walletConnected = false;
         window.walletConnected = false;
         if (pauseText) {
@@ -953,117 +978,208 @@ function calculateMoveDelay(currentScore) {
     return Math.max(BASE_MOVE_DELAY - reduction, MIN_MOVE_DELAY);
 }
 
-// Add this function to update the leaderboard
-async function updateLeaderboard() {
+// Add function to update high score display
+async function updateHighScoreDisplay() {
     try {
-        if (!window.contract || !window.ethereum) {
-            console.error('Contract or ethereum provider not initialized');
-            return;
-        }
+        console.log('Updating high score display...');
+        const isMiniApp = await window.farcasterSDK?.isInMiniApp();
+        console.log('Is Mini App:', isMiniApp);
 
-        // Get current account
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-        const currentAccount = accounts[0];
-
-        // Get top 100 scores
-        const topScores = await window.contract.getTopScores(100);
-        
-        // Create a map to store unique player scores (keeping only highest score per player)
-        const uniquePlayerScores = new Map();
-        
-        // Process scores to keep only highest score per player
-        topScores.forEach(score => {
-            const existingScore = uniquePlayerScores.get(score.player);
-            if (!existingScore || score.score > existingScore.score) {
-                uniquePlayerScores.set(score.player, score);
-            }
-        });
-        
-        // Convert map to array and sort by score
-        const sortedScores = Array.from(uniquePlayerScores.values())
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 100); // Take top 100
-        
-        // Update leaderboard table
-        const leaderboardBody = document.getElementById('leaderboardBody');
-        if (leaderboardBody) {
-            leaderboardBody.innerHTML = '';
-            
-            sortedScores.forEach((score, index) => {
-                const row = document.createElement('tr');
-                
-                // Format address to show only first 6 and last 4 characters
-                const shortAddress = `${score.player.slice(0, 6)}...${score.player.slice(-4)}`;
-                
-                // Format timestamp to readable date
-                const date = new Date(score.timestamp * 1000);
-                const formattedDate = date.toLocaleDateString();
-                
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${shortAddress}</td>
-                    <td>${score.score}</td>
-                    <td>${formattedDate}</td>
-                `;
-                
-                // Highlight user's score if account is connected
-                if (currentAccount && score.player.toLowerCase() === currentAccount.toLowerCase()) {
-                    row.style.backgroundColor = '#64ffda20';
-                }
-                
-                leaderboardBody.appendChild(row);
-            });
-        }
-
-        // Update user's rank section only if account is connected
-        const userRankDiv = document.getElementById('userRank');
-        if (userRankDiv) {
-            if (currentAccount) {
-                try {
-                    const userHighScore = await window.contract.getHighScore(currentAccount);
-                    const userHighScoreTimestamp = await window.contract.getHighScoreTimestamp(currentAccount);
-                    
-                    if (userHighScore > 0) {
-                        const date = new Date(userHighScoreTimestamp * 1000);
-                        const formattedDate = date.toLocaleDateString();
-                        
-                        // Find user's rank in the sorted scores
-                        const userRank = sortedScores.findIndex(score => 
-                            score.player.toLowerCase() === currentAccount.toLowerCase()
-                        ) + 1;
-                        
-                        userRankDiv.innerHTML = `
-                            <h4>Your High Score</h4>
-                            <p>Score: ${userHighScore}</p>
-                            <p>Rank: ${userRank > 0 ? userRank : 'Not in top 100'}</p>
-                            <p>Achieved on: ${formattedDate}</p>
+        if (isMiniApp && window.farcasterSDK?.wallet?.ethProvider) {
+            console.log('Using Farcaster wallet provider for high score');
+            const accounts = await window.farcasterSDK.wallet.ethProvider.request({ method: 'eth_accounts' });
+            console.log('Current accounts from Farcaster:', accounts);
+            if (accounts && accounts.length > 0) {
+                const currentAccount = accounts[0];
+                console.log('Fetching high score for account:', currentAccount);
+                const highScore = await window.readContract.getHighScore(currentAccount);
+                console.log('Retrieved high score:', highScore.toString());
+                const highScoreElement = document.getElementById('highscoreupdate');
+                if (highScoreElement) {
+                    highScoreElement.textContent = `High Score: ${highScore.toString()}`;
+                    highScoreElement.style.display = 'block';
+                    highScoreElement.style.cssText = `
+                        display: block;
+                        color: #8a6cb3;
+                        text-shadow: 
+                            0 0 2px #fff,
+                            0 0 4px #fff,
+                            0 0 6px #fff,
+                            0 0 8px #fff,
+                            0 0 10px #fff,
+                            0 0 12px #fff,
+                            0 0 14px #fff;
+                        font-family: 'Arial', sans-serif;
+                        font-weight: bold;
+                        font-size: 16px;
+                        padding: 8px;
+                        border-radius: 5px;
+                        background: rgba(138, 108, 179, 0.1);
+                        backdrop-filter: blur(5px);
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        margin: 8px 0;
+                        text-align: center;
+                        animation: neonPulse 2s infinite;
+                    `;
+                    // Add the animation keyframes if not already added
+                    if (!document.querySelector('style[data-neon-style]')) {
+                        const style = document.createElement('style');
+                        style.setAttribute('data-neon-style', 'true');
+                        style.textContent = `
+                            @keyframes neonPulse {
+                                0% {
+                                    text-shadow: 
+                                        0 0 2px #fff,
+                                        0 0 4px #fff,
+                                        0 0 6px #fff,
+                                        0 0 8px #fff,
+                                        0 0 10px #fff,
+                                        0 0 12px #fff,
+                                        0 0 14px #fff;
+                                }
+                                50% {
+                                    text-shadow: 
+                                        0 0 1px #fff,
+                                        0 0 2px #fff,
+                                        0 0 3px #fff,
+                                        0 0 4px #fff,
+                                        0 0 5px #fff,
+                                        0 0 6px #fff,
+                                        0 0 7px #fff;
+                                }
+                                100% {
+                                    text-shadow: 
+                                        0 0 2px #fff,
+                                        0 0 4px #fff,
+                                        0 0 6px #fff,
+                                        0 0 8px #fff,
+                                        0 0 10px #fff,
+                                        0 0 12px #fff,
+                                        0 0 14px #fff;
+                                }
+                            }
                         `;
-                    } else {
-                        userRankDiv.innerHTML = '<p>Play a game to get on the leaderboard!</p>';
+                        document.head.appendChild(style);
                     }
-                } catch (error) {
-                    console.error('Error fetching user high score:', error);
-                    userRankDiv.innerHTML = '<p>Error loading your high score</p>';
+                    console.log('Updated high score display with neon styling');
+                } else {
+                    console.error('High score element not found');
                 }
             } else {
-                userRankDiv.innerHTML = '<p></p>';
+                console.log('No accounts found in Farcaster wallet');
             }
+        } else if (window.ethereum && window.readContract) {
+            console.log('Using regular ethereum provider for high score');
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            console.log('Current accounts from regular provider:', accounts);
+            if (accounts && accounts.length > 0) {
+                const currentAccount = accounts[0];
+                console.log('Fetching high score for account:', currentAccount);
+                const highScore = await window.readContract.getHighScore(currentAccount);
+                console.log('Retrieved high score:', highScore.toString());
+                const highScoreElement = document.getElementById('highscoreupdate');
+                if (highScoreElement) {
+                    highScoreElement.textContent = `High Score: ${highScore.toString()}`;
+                    highScoreElement.style.display = 'block';
+                    highScoreElement.style.cssText = `
+                        display: block;
+                        color: #8a6cb3;
+                        text-shadow: 
+                            0 0 2px #fff,
+                            0 0 4px #fff,
+                            0 0 6px #fff,
+                            0 0 8px #fff,
+                            0 0 10px #fff,
+                            0 0 12px #fff,
+                            0 0 14px #fff;
+                        font-family: 'Arial', sans-serif;
+                        font-weight: bold;
+                        font-size: 16px;
+                        padding: 8px;
+                        border-radius: 5px;
+                        background: rgba(138, 108, 179, 0.1);
+                        backdrop-filter: blur(5px);
+                        border: 1px solid rgba(255, 255, 255, 0.3);
+                        margin: 8px 0;
+                        text-align: center;
+                        animation: neonPulse 2s infinite;
+                    `;
+                    // Add the animation keyframes if not already added
+                    if (!document.querySelector('style[data-neon-style]')) {
+                        const style = document.createElement('style');
+                        style.setAttribute('data-neon-style', 'true');
+                        style.textContent = `
+                            @keyframes neonPulse {
+                                0% {
+                                    text-shadow: 
+                                        0 0 2px #fff,
+                                        0 0 4px #fff,
+                                        0 0 6px #fff,
+                                        0 0 8px #fff,
+                                        0 0 10px #fff,
+                                        0 0 12px #fff,
+                                        0 0 14px #fff;
+                                }
+                                50% {
+                                    text-shadow: 
+                                        0 0 1px #fff,
+                                        0 0 2px #fff,
+                                        0 0 3px #fff,
+                                        0 0 4px #fff,
+                                        0 0 5px #fff,
+                                        0 0 6px #fff,
+                                        0 0 7px #fff;
+                                }
+                                100% {
+                                    text-shadow: 
+                                        0 0 2px #fff,
+                                        0 0 4px #fff,
+                                        0 0 6px #fff,
+                                        0 0 8px #fff,
+                                        0 0 10px #fff,
+                                        0 0 12px #fff,
+                                        0 0 14px #fff;
+                                }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                    console.log('Updated high score display with neon styling');
+                } else {
+                    console.error('High score element not found');
+                }
+            } else {
+                console.log('No accounts found in regular provider');
+            }
+        } else {
+            console.log('No ethereum provider or read contract available');
         }
     } catch (error) {
-        console.error('Error updating leaderboard:', error);
-        const leaderboardBody = document.getElementById('leaderboardBody');
-        if (leaderboardBody) {
-            leaderboardBody.innerHTML = '<tr><td colspan="4">Error loading leaderboard</td></tr>';
-        }
-        const userRankDiv = document.getElementById('userRank');
-        if (userRankDiv) {
-            userRankDiv.innerHTML = '<p></p>';
+        console.error('Error updating high score display:', error);
+        const highScoreElement = document.getElementById('highscoreupdate');
+        if (highScoreElement) {
+            highScoreElement.textContent = 'High Score: Error';
+            highScoreElement.style.display = 'block';
         }
     }
 }
 
-// Make updateLeaderboard available globally
-window.updateLeaderboard = updateLeaderboard;
+// Make updateHighScoreDisplay available globally
+window.updateHighScoreDisplay = updateHighScoreDisplay;
+
+// Initialize high score display when the game loads
+document.addEventListener('DOMContentLoaded', async function() {
+    if (window.game && typeof window.game.destroy === 'function') {
+        window.game.destroy(true);
+    }
+    window.game = new Phaser.Game(config);
+    
+    // Add delayed high score update
+    setTimeout(async () => {
+        console.log('Delayed high score update after 3 seconds...');
+        await updateHighScoreDisplay();
+    }, 3000);
+});
 
 // Set Phaser config to fixed 320x295
 let config = {
@@ -1079,11 +1195,9 @@ let config = {
     }
 };
 
-// Initialize Phaser after DOM loads (no resize handler needed)
-document.addEventListener('DOMContentLoaded', function() {
-    if (window.game && typeof window.game.destroy === 'function') {
-        window.game.destroy(true);
-    }
-    window.game = new Phaser.Game(config);
+// Add event listener for Farcaster initialization complete
+window.addEventListener('farcasterInitialized', async () => {
+    console.log('Farcaster initialization complete, updating high score...');
+    await updateHighScoreDisplay();
 });
 

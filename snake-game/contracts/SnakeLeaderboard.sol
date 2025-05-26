@@ -53,34 +53,61 @@ contract SnakeLeaderboard {
     }
 
     function getTopScores(uint256 n) external view returns (ScoreEntry[] memory) {
-        uint256 len = allScores.length;
-        require(len > 0, "No scores yet");
-        if (n > len) n = len;
-
-        ScoreEntry[] memory scores = new ScoreEntry[](len);
-        for (uint256 i = 0; i < len; i++) {
-            scores[i] = allScores[i];
+        // Create a mapping to store highest score per player
+        mapping(address => ScoreEntry) memory playerHighScores;
+        
+        // First pass: find highest score for each player
+        for (uint256 i = 0; i < allScores.length; i++) {
+            ScoreEntry memory currentScore = allScores[i];
+            ScoreEntry memory existingScore = playerHighScores[currentScore.player];
+            
+            if (existingScore.score == 0 || currentScore.score > existingScore.score) {
+                playerHighScores[currentScore.player] = currentScore;
+            }
         }
-
-        for (uint256 i = 0; i < n; i++) {
-            uint256 maxIdx = i;
-            for (uint256 j = i + 1; j < len; j++) {
-                if (scores[j].score > scores[maxIdx].score) {
-                    maxIdx = j;
+        
+        // Convert mapping to array
+        ScoreEntry[] memory uniqueScores = new ScoreEntry[](totalPlayers);
+        uint256 uniqueCount = 0;
+        
+        for (uint256 i = 0; i < allScores.length; i++) {
+            address player = allScores[i].player;
+            ScoreEntry memory highScore = playerHighScores[player];
+            
+            // Check if we've already added this player's score
+            bool alreadyAdded = false;
+            for (uint256 j = 0; j < uniqueCount; j++) {
+                if (uniqueScores[j].player == player) {
+                    alreadyAdded = true;
+                    break;
                 }
             }
-            if (maxIdx != i) {
-                ScoreEntry memory temp = scores[i];
-                scores[i] = scores[maxIdx];
-                scores[maxIdx] = temp;
+            
+            if (!alreadyAdded) {
+                uniqueScores[uniqueCount++] = highScore;
             }
         }
-
-        ScoreEntry[] memory topScores = new ScoreEntry[](n);
-        for (uint256 i = 0; i < n; i++) {
-            topScores[i] = scores[i];
+        
+        // Sort the unique scores
+        for (uint256 i = 0; i < uniqueCount - 1; i++) {
+            for (uint256 j = 0; j < uniqueCount - i - 1; j++) {
+                if (uniqueScores[j].score < uniqueScores[j + 1].score) {
+                    ScoreEntry memory temp = uniqueScores[j];
+                    uniqueScores[j] = uniqueScores[j + 1];
+                    uniqueScores[j + 1] = temp;
+                }
+            }
         }
-        return topScores;
+        
+        // Create result array with top n scores
+        uint256 resultLength = n < uniqueCount ? n : uniqueCount;
+        ScoreEntry[] memory result = new ScoreEntry[](resultLength);
+        
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = uniqueScores[i];
+        }
+        
+        return result;
     }
 
     function getPlayerScores(address player) external view returns (ScoreEntry[] memory) {

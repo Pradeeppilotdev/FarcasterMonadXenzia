@@ -71,8 +71,10 @@ const MONAD_TESTNET = {
 
 // Global state
 let provider;
+let readProvider;
 let signer;
 let contract;
+let readContract;
 let account;
 let isConnected = false;
 
@@ -108,6 +110,38 @@ function updateConnectionStatus() {
         } else {
             walletInfo.textContent = 'Not Connected';
         }
+    }
+}
+
+// Initialize read-only provider
+function initializeReadProvider() {
+    try {
+        // Create a read-only provider using the public RPC URL
+        readProvider = new ethers.providers.JsonRpcProvider(MONAD_TESTNET.rpcUrls[0]);
+        // Create a read-only contract instance
+        readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+        // Make readContract available globally
+        window.readContract = readContract;
+        console.log('Read-only provider initialized successfully');
+        
+        // Initial leaderboard load
+        updateLeaderboard().catch(error => {
+            console.error('Error in initial leaderboard load:', error);
+        });
+        
+        // Set up periodic leaderboard refresh
+        setInterval(async () => {
+            try {
+                await updateLeaderboard();
+            } catch (error) {
+                console.error('Error in periodic leaderboard update:', error);
+            }
+        }, 10000); // Refresh every 10 seconds
+        
+        return true;
+    } catch (error) {
+        console.error('Error initializing read-only provider:', error);
+        return false;
     }
 }
 
@@ -157,7 +191,7 @@ async function initializeContract(ethereumProvider) {
             }
         }
 
-        // Initialize contract
+        // Initialize contract for writing only
         contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
         
         // Try to get the current account
@@ -201,7 +235,14 @@ async function initializeFarcaster() {
             
             if (sdk.wallet.ethProvider) {
                 window.ethereum = sdk.wallet.ethProvider;
-                return await initializeContract(sdk.wallet.ethProvider);
+                const success = await initializeContract(sdk.wallet.ethProvider);
+                if (success) {
+                    // Update leaderboard after wallet connection
+                    updateLeaderboard().catch(error => {
+                        console.error('Error updating leaderboard after wallet connection:', error);
+                    });
+                }
+                return success;
             }
         }
         return false;
@@ -232,9 +273,11 @@ async function disconnectWallet() {
     provider = null;
     signer = null;
     contract = null;
+    readContract = null;
     account = null;
     isConnected = false;
     window.contract = null;
+    window.readContract = null;
     window.walletConnected = false;
 
     // Update UI
@@ -257,22 +300,29 @@ async function submitScore(score) {
         const data = contract.interface.encodeFunctionData('submitScore', [score]);
         
         // Send the transaction using window.ethereum.request and eth_sendTransaction
-        // Manually specify gas in hex to avoid eth_estimateGas
         const tx = await window.ethereum.request({
             method: 'eth_sendTransaction',
             params: [{
-                from: account, // The connected account from wallet
+                from: account,
                 to: CONTRACT_ADDRESS,
                 data: data,
-                value: '0x0', // 0 ETH
-                gas: '0x30d40' // 200,000 in hexadecimal, manual gas limit
-                // gasPrice or maxFeePerGas/maxPriorityFeePerGas might be needed depending on EIP-1559 support
-                // For simplicity, let's start without them, but keep in mind they might be required.
+                value: '0x0',
+                gas: '0x30d40'
             }]
         });
         
         console.log('Transaction sent:', tx);
 
+        // Wait for transaction to be mined
+        const receipt = await provider.waitForTransaction(tx);
+        console.log('Transaction mined:', receipt);
+
+        // Update leaderboard immediately after score submission
+        try {
+            await updateLeaderboard();
+        } catch (error) {
+            console.error('Error updating leaderboard after score submission:', error);
+        }
 
         return true;
     } catch (error) {
@@ -282,18 +332,196 @@ async function submitScore(score) {
     }
 }
 
+// Update the updateLeaderboard function to use readContract
+async function updateLeaderboard() {
+    try {
+        if (!window.readContract) {
+            console.error('Read contract not initialized');
+            return;
+        }
+
+        // Get current account from window.ethereum if available
+        let currentAccount = null;
+        try {
+            if (window.ethereum) {
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                currentAccount = accounts[0];
+                console.log('Current account for leaderboard:', currentAccount);
+            }
+        } catch (error) {
+            console.log('Could not get current account:', error);
+        }
+
+        // Get top 100 scores using readContract
+        const topScores = await window.readContract.getTopScores(100);
+        console.log('Raw top scores from contract:', topScores);
+        
+        // Create a map to store unique player scores (keeping only highest score per player)
+        const uniquePlayerScores = new Map();
+        
+        // Process scores to keep only highest score per player
+        topScores.forEach(score => {
+            const player = score.player.toLowerCase(); // Normalize address case
+            const scoreValue = parseInt(score.score);
+            const existingScore = uniquePlayerScores.get(player);
+            
+            console.log('Processing score:', {
+                player: player,
+                score: scoreValue,
+                timestamp: score.timestamp.toString()
+            });
+            
+            if (!existingScore || scoreValue > parseInt(existingScore.score)) {
+                console.log('Updating score for player:', player, 'New score:', scoreValue);
+                uniquePlayerScores.set(player, {
+                    player: score.player, // Keep original case for display
+                    score: scoreValue,
+                    timestamp: score.timestamp
+                });
+            }
+        });
+        
+        // Convert map to array and sort by score
+        const sortedScores = Array.from(uniquePlayerScores.values())
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 100); // Take top 100
+        
+        console.log('Final sorted scores:', sortedScores.map(s => ({
+            player: s.player,
+            score: s.score,
+            timestamp: s.timestamp.toString()
+        })));
+        
+        // Update leaderboard table
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (leaderboardBody) {
+            leaderboardBody.innerHTML = '';
+            
+            sortedScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                
+                // Format address to show only first 6 and last 4 characters
+                const shortAddress = `${score.player.slice(0, 6)}...${score.player.slice(-4)}`;
+                
+                // Format timestamp to readable date
+                const date = new Date(score.timestamp * 1000);
+                const formattedDate = date.toLocaleDateString();
+                
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${shortAddress}</td>
+                    <td>${score.score}</td>
+                    <td>${formattedDate}</td>
+                `;
+                
+                // Highlight user's score if account is connected
+                if (currentAccount && score.player.toLowerCase() === currentAccount.toLowerCase()) {
+                    console.log('Found user score in leaderboard:', {
+                        player: score.player,
+                        score: score.score
+                    });
+                    row.style.backgroundColor = '#64ffda20';
+                }
+                
+                leaderboardBody.appendChild(row);
+            });
+        }
+
+        // Update user's rank section only if account is connected
+        const userRankDiv = document.getElementById('userRank');
+        if (userRankDiv) {
+            if (currentAccount) {
+                try {
+                    const userHighScore = await window.readContract.getHighScore(currentAccount);
+                    const userHighScoreTimestamp = await window.readContract.getHighScoreTimestamp(currentAccount);
+                    
+                    console.log('User high score details:', {
+                        account: currentAccount,
+                        highScore: userHighScore.toString(),
+                        timestamp: userHighScoreTimestamp.toString()
+                    });
+                    
+                    if (userHighScore > 0) {
+                        const date = new Date(userHighScoreTimestamp * 1000);
+                        const formattedDate = date.toLocaleDateString();
+                        
+                        // Find user's rank in the sorted scores
+                        const userRank = sortedScores.findIndex(score => 
+                            score.player.toLowerCase() === currentAccount.toLowerCase()
+                        ) + 1;
+                        
+                        console.log('User rank in leaderboard:', userRank);
+                        
+                        userRankDiv.innerHTML = `
+                            <h4>Your High Score</h4>
+                            <p>Score: ${userHighScore}</p>
+                            <p>Rank: ${userRank > 0 ? userRank : 'Not in top 100'}</p>
+                            <p>Achieved on: ${formattedDate}</p>
+                        `;
+                    } else {
+                        userRankDiv.innerHTML = '<p>Play a game to get on the leaderboard!</p>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching user high score:', error);
+                    userRankDiv.innerHTML = '<p>Error loading your high score</p>';
+                }
+            } else {
+                userRankDiv.innerHTML = '<p></p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating leaderboard:', error);
+        const leaderboardBody = document.getElementById('leaderboardBody');
+        if (leaderboardBody) {
+            leaderboardBody.innerHTML = '<tr><td colspan="4">Error loading leaderboard</td></tr>';
+        }
+        const userRankDiv = document.getElementById('userRank');
+        if (userRankDiv) {
+            userRankDiv.innerHTML = '<p></p>';
+        }
+    }
+}
+
+// Initialize read provider on page load
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing...');
+    // Initialize read provider first
+    initializeReadProvider();
+    // Then initialize Farcaster
+    initializeFarcaster();
+    
+    // Add refresh button to leaderboard
+    const leaderboardDiv = document.getElementById('leaderboard');
+    if (leaderboardDiv) {
+        const refreshButton = document.createElement('button');
+        refreshButton.textContent = '🔄 Refresh Leaderboard';
+        refreshButton.style.cssText = `
+            margin: 10px 0;
+            padding: 5px 10px;
+            background-color: #64ffda;
+            color: #0a192f;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        `;
+        refreshButton.onclick = () => {
+            refreshButton.textContent = '🔄 Refreshing...';
+            updateLeaderboard().finally(() => {
+                refreshButton.textContent = '🔄 Refresh Leaderboard';
+            });
+        };
+        leaderboardDiv.insertBefore(refreshButton, leaderboardDiv.firstChild);
+    }
+});
+
 // Export functions for use in other files
 window.initializeFarcaster = initializeFarcaster;
 window.connectWallet = connectWallet;
 window.disconnectWallet = disconnectWallet;
 window.submitScore = submitScore;
 window.initializeContract = initializeContract;
-
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing...');
-    initializeFarcaster();
-});
+window.updateLeaderboard = updateLeaderboard;
 
 // Handle account changes
 if (window.ethereum) {
