@@ -378,7 +378,7 @@ function update(time) {
         }
 
         // Check food collision using target position
-        if (Math.abs(snake.targetX - moyaki.x) < GRID_SIZE && Math.abs(snake.targetY - moyaki.y) < GRID_SIZE) {
+        if (Math.abs(snake.targetX - moyaki.x) < GRID_SIZE * 1.5 && Math.abs(snake.targetY - moyaki.y) < GRID_SIZE * 1.5) {
             // Add new segment
             const lastSegment = snakeSegments[snakeSegments.length - 1];
             const newSegment = scene.add.sprite(lastSegment.x, lastSegment.y, selectedCharacter || 'molandak');
