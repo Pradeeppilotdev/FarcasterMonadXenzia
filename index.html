@@ -531,36 +531,79 @@
         
         /* How to play section */
         .how-to-play {
-            background: rgba(138, 108, 179, 0.05);
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px auto;
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(138, 108, 179, 0.95);
+            padding: 25px;
+            border-radius: 12px;
             max-width: 345px;
+            width: 90%;
             box-shadow: 
-                2px 2px 0 #8a6cb3,
-                -1px -1px 0 #8a6cb3;
-            backdrop-filter: blur(5px);
-            border: 1.5px solid #8a6cb3;
-            transform: rotate(-0.5deg);
+                0 0 20px rgba(138, 108, 179, 0.5),
+                0 0 40px rgba(138, 108, 179, 0.3),
+                0 0 60px rgba(138, 108, 179, 0.2);
+            backdrop-filter: blur(10px);
+            border: 2px solid #8a6cb3;
+            z-index: 1000;
+            animation: neonPulse 2s infinite;
         }
         
         .how-to-play h3 {
-            color: #8a6cb3;
+            color: #fff;
             text-align: center;
-            margin-bottom: 15px;
-            font-size: 14px;
+            margin-bottom: 20px;
+            font-size: 18px;
             font-weight: bold;
-            text-shadow: 1px 1px 0 #fff;
-            transform: rotate(0.5deg);
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #8a6cb3,
+                0 0 15px #8a6cb3;
         }
         
         .how-to-play p {
-            margin: 8px 0;
+            margin: 12px 0;
             text-align: center;
-            font-size: 12px;
+            font-size: 14px;
             color: #fff;
-            text-shadow: 0.5px 0.5px 0 rgba(138, 108, 179, 0.5);
-            line-height: 1.4;
+            text-shadow: 0 0 5px rgba(138, 108, 179, 0.8);
+            line-height: 1.6;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+            text-shadow: 0 0 5px #fff;
+            transition: all 0.3s ease;
+        }
+
+        .close-button:hover {
+            transform: scale(1.2);
+            text-shadow: 
+                0 0 5px #fff,
+                0 0 10px #8a6cb3;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 999;
         }
 
         .game-title {
@@ -634,6 +677,21 @@
     <div id="celestial-background">
         <div id="stars"></div>
         <div id="nebula"></div>
+    </div>
+    
+    <!-- Add overlay and how-to-play popup -->
+    <div class="overlay" id="overlay"></div>
+    <div class="how-to-play" id="howToPlay">
+        <button class="close-button" onclick="closeHowToPlay()">×</button>
+        <h3>How to Play</h3>
+        <p>This is a simple MONAD XENZIA Game.</p>
+        <p>Just press spacebar to start/pause the game.</p>
+        <p>Use the arrow keys to move the snake.</p>
+        <p>Eat the moyaki to score points.</p>
+        <p>The game ends when the snake hits the edge of the screen or itself.</p>
+        <p>The score is recorded on the blockchain.</p>
+        <p>Make sure to connect your wallet to play the game.</p>
+        <p>Enjoy the game!</p>
     </div>
     
     <div class="container">
@@ -772,18 +830,6 @@
                 </tbody>
             </table>
             <div id="userRank"></div>
-        </div>
-        
-        <div class="how-to-play">
-            <h3>How to play</h3>
-            <p>This is a simple MONAD XENZIA Game.</p>
-            <p>Just press spacebar to start/pause the game.</p>
-            <p>Use the arrow keys to move the snake.</p>
-            <p>Eat the moyaki to score points.</p>
-            <p>The game ends when the snake hits the edge of the screen or itself.</p>
-            <p>The score is recorded on the blockchain.</p>
-            <p>Make sure to connect your wallet to play the game.</p>
-            <p>Enjoy the game!</p>
         </div>
     </div>
 
@@ -1195,6 +1241,24 @@
                 alert('Add Mini App functionality not available in this environment.');
             }
         });
+
+        // Add this at the beginning of your script section
+        function showHowToPlay() {
+            const hasSeenInstructions = localStorage.getItem('hasSeenInstructions');
+            if (!hasSeenInstructions) {
+                document.getElementById('overlay').style.display = 'block';
+                document.getElementById('howToPlay').style.display = 'block';
+            }
+        }
+
+        function closeHowToPlay() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('howToPlay').style.display = 'none';
+            localStorage.setItem('hasSeenInstructions', 'true');
+        }
+
+        // Call showHowToPlay when the page loads
+        window.addEventListener('load', showHowToPlay);
     </script>
 <pre id="debugOutput" style="color: #f88; font-size: 12px; white-space: pre-wrap;"></pre>
 
